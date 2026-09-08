@@ -539,6 +539,9 @@
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
 </head>
 <body>
 
@@ -587,20 +590,11 @@
   </div>
 
   <div class="map-panel" style="margin-bottom:20px;">
-    <div class="map-embed-wrap">
-      <iframe
-        id="arcgisMapFrame"
-        src="https://experience.arcgis.com/experience/a1ec94258b804cd39101bbad8e47c1cd?post_message=true"
-        title="EPPS Gas Storage Project — ArcGIS parcel map"
-        style="width:100%; height:760px; border:0; border-radius:8px; display:block;"
-        allowfullscreen>
-      </iframe>
-      <div class="map-embed-fallback">
-        <span>This map requires your ArcGIS Online login. If it doesn't load below, </span>
-        <a href="https://experience.arcgis.com/experience/a1ec94258b804cd39101bbad8e47c1cd" target="_blank" rel="noopener">open it directly in a new tab &#8599;</a>
-      </div>
+    <div class="map-embed-wrap" style="position:relative;">
+      <div id="leafletMap" style="width:100%; height:760px; border-radius:8px; background:#0c1424;"></div>
+      <div id="leafletMapStatus" class="map-embed-fallback">Loading live parcel data&hellip;</div>
     </div>
-    <div class="map-caption" id="mapCaption">Live parcel map hosted in ArcGIS Online — reflects the current state of the source feature layer, independent of this dashboard's Reporting Date filter. Requires an ArcGIS Online account with access to this organization.</div>
+    <div class="map-caption" id="mapCaption">Live parcel map served directly from your organization's ArcGIS Server — reflects the current state of the source feature layer, independent of this dashboard's Reporting Date filter. Click a status pill above to filter which parcels are shown.</div>
   </div>
 
   
@@ -1113,9 +1107,15 @@ const history = [
 
 const HISTORY_STATUSES = ['ACQUIRED','NEGOTIATING','DELIVERED','MAILED','LEGAL','STATE LANDS'];
 
-const ARCGIS_DATA_SOURCE_ID = '87766c17d32946a0bfe592270db2412a-19fb849ae14-layer-1-8';
-const ARCGIS_STATUS_FIELD = 'MAIL_STATUS'; // assumed to match the weekly mapper export field name — confirm with GIS team if the map layer uses a different field
-const ARCGIS_IFRAME_ORIGIN = '*'; // wildcard: avoids send-side origin-mismatch failures while the iframe is still navigating; ArcGIS's own message handler enforces its own origin/security check on receipt regardless of what we send here
+// --- Leaflet / esri-leaflet live map config ---
+// LAYER INDEX: placeholder — confirm the correct layer within the MapServer once you can
+// browse https://maps.segland.com/arcgis/rest/services/Energy_Transfer/Epps_Gas_Storage/MapServer
+// in a browser (while logged in) and change the 0 below if the parcel layer isn't the first one.
+const ARCGIS_SERVICE_URL = 'https://maps.segland.com/arcgis/rest/services/Energy_Transfer/Epps_Gas_Storage/MapServer/8';
+const ARCGIS_STATUS_FIELD = 'MAIL_STATUS'; // assumed to match the weekly mapper export field name — confirm with GIS team if this service uses a different field
+let leafletMap = null;
+let leafletParcelLayer = null;
+let leafletTokenRefreshTimer = null;
 
 function niceCeil(n){
   if(n <= 0) return 1;
@@ -1422,7 +1422,7 @@ function renderAll(){
   renderBars();
   renderLandownerTable();
   renderHistoryAcres();
-  syncArcgisMapFilter();
+  updateLeafletMapFilter();
 }
 renderAll();
 function renderLandownerTable(){
@@ -1753,29 +1753,83 @@ function renderHistoryAcres(){
 
 renderMoney();
 
-/* ---------------- ArcGIS live map filter (postMessage) ---------------- */
-function syncArcgisMapFilter(){
-  const iframe = document.getElementById('arcgisMapFrame');
-  if(!iframe || !iframe.contentWindow) return;
-  const where = selected === 'ALL' ? '1=1' : `${ARCGIS_STATUS_FIELD} = '${selected}'`;
+/* ---------------- Leaflet live map (esri-leaflet, token via /api/arcgis-token) ---------------- */
+function setLeafletStatus(msg){
+  const el = document.getElementById('leafletMapStatus');
+  if(el) el.textContent = msg;
+}
+
+async function fetchArcgisToken(){
+  const res = await fetch('/api/arcgis-token');
+  if(!res.ok){
+    const body = await res.json().catch(()=>({}));
+    throw new Error(body.error || `Token request failed (${res.status})`);
+  }
+  return res.json(); // { token, expires, referer }
+}
+
+function scheduleTokenRefresh(expiresMs){
+  if(leafletTokenRefreshTimer) clearTimeout(leafletTokenRefreshTimer);
+  // Refresh 5 minutes before the token actually expires
+  const delay = Math.max(30000, expiresMs - Date.now() - 5 * 60 * 1000);
+  leafletTokenRefreshTimer = setTimeout(refreshLeafletToken, delay);
+}
+
+async function refreshLeafletToken(){
   try{
-    iframe.contentWindow.postMessage({
-      type: 'exb:filterDataSource',
-      filter: { dataSourceId: ARCGIS_DATA_SOURCE_ID, where: where }
-    }, ARCGIS_IFRAME_ORIGIN);
+    const { token, expires } = await fetchArcgisToken();
+    if(leafletParcelLayer) leafletParcelLayer.authenticate(token);
+    scheduleTokenRefresh(expires);
   } catch(e){
-    // Expected to fail when this page is opened from a local file (file://) rather than
-    // served over http/https — ArcGIS's own message handler rejects messages from an
-    // unverifiable sender origin. Once hosted properly, this should succeed silently.
+    setLeafletStatus('Could not refresh map access — the map may stop updating until this page is reloaded.');
   }
 }
 
-// Re-sync once the map has actually finished loading, in case the very first
-// call above fired before the ArcGIS app was ready to receive messages.
-const arcgisFrameEl = document.getElementById('arcgisMapFrame');
-if(arcgisFrameEl){
-  arcgisFrameEl.addEventListener('load', syncArcgisMapFilter);
+async function initLeafletMap(){
+  if(leafletMap) return;
+  try{
+    setLeafletStatus('Loading live parcel data…');
+    const { token, expires } = await fetchArcgisToken();
+
+    leafletMap = L.map('leafletMap', { zoomControl: true, attributionControl: true });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+      maxZoom: 19
+    }).addTo(leafletMap);
+
+    leafletParcelLayer = L.esri.featureLayer({
+      url: ARCGIS_SERVICE_URL,
+      token: token,
+      style: (feature) => {
+        const status = feature.properties[ARCGIS_STATUS_FIELD];
+        return { color: '#000', weight: 0.6, fillColor: statusColor(status) || '#888', fillOpacity: 0.75 };
+      }
+    }).addTo(leafletMap);
+
+    leafletParcelLayer.on('load', () => {
+      setLeafletStatus('');
+      const bounds = leafletParcelLayer.getBounds();
+      if(bounds.isValid()) leafletMap.fitBounds(bounds, { padding: [12,12] });
+    });
+
+    leafletParcelLayer.on('requesterror', (e) => {
+      setLeafletStatus(`Map data request failed (${e.error && e.error.code}) — this usually means the ArcGIS Server needs to allow requests from this site's address, or the layer index needs correcting.`);
+    });
+
+    scheduleTokenRefresh(expires);
+    updateLeafletMapFilter();
+  } catch(e){
+    setLeafletStatus('Could not load the live map: ' + e.message);
+  }
 }
+
+function updateLeafletMapFilter(){
+  if(!leafletParcelLayer) return;
+  const where = selected === 'ALL' ? '1=1' : `${ARCGIS_STATUS_FIELD} = '${selected}'`;
+  leafletParcelLayer.setWhere(where);
+}
+
+initLeafletMap();
 </script>
 </body>
 </html>
