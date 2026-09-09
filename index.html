@@ -611,10 +611,6 @@
       <span class="filter-label">Reporting Date</span>
       <div class="seg" id="weekSeg"></div>
     </div>
-    <div class="filter-group">
-      <span class="filter-label">Comparing</span>
-      <div class="seg" id="weekPicker"></div>
-    </div>
   </div>
 
   <div class="main-grid">
@@ -1124,9 +1120,16 @@ const DATA_STATUS_ORDER = ['ACQUIRED','DELIVERED','LEGAL','MAILED','NEGOTIATING'
 // "current" since there is nothing before it to compare against.
 let currentWeekIdx = history.length - 1;
 let data, totalCurr, totalPrev, totalLoCurr, totalLoPrev, ALL_STATUS;
+// Comparison (week-over-week deltas, "vs previous" text) is only ever shown when the
+// TRUE latest week is selected — any other reporting date is a standalone snapshot.
+function isLatestWeek(){ return currentWeekIdx === history.length - 1; }
+
 function recomputeData(){
   const curr = history[currentWeekIdx];
-  const prev = history[currentWeekIdx - 1];
+  // Older weeks don't display a comparison at all, so when there's no real previous week
+  // (the very first week on record) we just fall back to curr itself — those prev-side
+  // values are never rendered in that case since isLatestWeek() gates all comparison UI.
+  const prev = currentWeekIdx > 0 ? history[currentWeekIdx - 1] : curr;
   data = DATA_STATUS_ORDER.map(name => ({
     name,
     loPrev: prev.landowners[name] || 0,
@@ -1178,13 +1181,8 @@ const fmtInt = (n) => n.toLocaleString('en-US');
 
 
 let selected = 'ACQUIRED';
-let week = 'current'; // 'current' | 'previous' | 'both' (All) — which side of the pair to focus on
 
-function weekLabel(w){ return w==='current' ? history[currentWeekIdx].date : (w==='previous' ? history[currentWeekIdx-1].date : 'All'); }
-function acresOf(d){ return week==='previous' ? d.acPrev : d.acCurr; }
-function otherAcresOf(d){ return week==='previous' ? d.acCurr : d.acPrev; }
-function loOf(d){ return week==='previous' ? d.loPrev : d.loCurr; }
-function totalAcresFor(w){ return w==='previous' ? totalPrev : totalCurr; }
+function weekLabel(w){ return w==='current' ? history[currentWeekIdx].date : history[Math.max(0,currentWeekIdx-1)].date; }
 
 function polarToCartesian(cx, cy, r, angleDeg){
   const rad = (angleDeg-90) * Math.PI/180;
@@ -1226,82 +1224,66 @@ function renderPills(){
   });
 }
 
+// Reporting Date lists every week on record. Selecting the latest week shows it compared
+// to the week before it; selecting any other week shows that week's own standalone numbers.
 function renderWeekSeg(){
   const seg = document.getElementById('weekSeg');
   seg.innerHTML = '';
-  ['both','current','previous'].forEach(w=>{
-    const p = document.createElement('button');
-    p.className = 'pill week-pill' + (week===w ? ' active':'');
-    p.textContent = weekLabel(w);
-    p.onclick = ()=>{ week = w; renderAll(); };
-    seg.appendChild(p);
-  });
-}
-
-// Rolling week selector: lists every week in history[] except the very first
-// (there's nothing before it to compare against). Picking one sets it as the
-// "current" week — the week right before it automatically becomes "previous".
-function renderWeekPicker(){
-  const picker = document.getElementById('weekPicker');
-  if(!picker) return;
-  picker.innerHTML = '';
-  for(let i=1; i<history.length; i++){
+  for(let i=history.length-1; i>=0; i--){
+    const h = history[i];
     const p = document.createElement('button');
     p.className = 'pill week-pill' + (i===currentWeekIdx ? ' active':'');
-    p.textContent = history[i].date;
+    p.textContent = h.date;
     p.onclick = ()=>{ currentWeekIdx = i; renderAll(); };
-    picker.appendChild(p);
+    seg.appendChild(p);
   }
 }
 
 function renderHeader(){
   const d = getSelected();
-  if(week==='both'){
-    document.getElementById('hsAcres').innerHTML = `${fmt(d.acCurr,1)} <span class="sub">/ ${fmt(d.acPrev,1)}</span>`;
-    document.getElementById('hsAcresLbl').textContent = `${selected} · ${weekLabel('current')} / ${weekLabel('previous')} Acres`;
-    document.getElementById('hsLandowners').innerHTML = `${fmtInt(d.loCurr)} <span class="sub">/ ${fmtInt(d.loPrev)}</span>`;
-    document.getElementById('hsLandownersLbl').textContent = `${selected} · ${weekLabel('current')} / ${weekLabel('previous')} Landowners`;
-    const shareCurr = (d.acCurr/totalCurr*100).toFixed(1);
-    const sharePrev = (d.acPrev/totalPrev*100).toFixed(1);
-    document.getElementById('hsShare').innerHTML = `${shareCurr}% <span class="sub">/ ${sharePrev}%</span>`;
-    document.getElementById('hsShareLbl').textContent = `Share of Portfolio (${weekLabel('current')} / ${weekLabel('previous')})`;
-  } else {
-    const acres = acresOf(d);
-    const lo = loOf(d);
-    const share = (acres/totalAcresFor(week))*100;
-    document.getElementById('hsAcres').textContent = fmt(acres,1);
-    document.getElementById('hsAcresLbl').textContent = `${selected} · ${weekLabel(week)} Acres`;
-    document.getElementById('hsLandowners').textContent = fmtInt(lo);
-    document.getElementById('hsLandownersLbl').textContent = `${selected} · ${weekLabel(week)} Landowners`;
-    document.getElementById('hsShare').textContent = share.toFixed(1) + '%';
-    document.getElementById('hsShareLbl').textContent = 'Share of Portfolio';
-  }
+  const share = (d.acCurr/totalCurr)*100;
+  document.getElementById('hsAcres').textContent = fmt(d.acCurr,1);
+  document.getElementById('hsAcresLbl').textContent = `${selected} · ${weekLabel('current')} Acres`;
+  document.getElementById('hsLandowners').textContent = fmtInt(d.loCurr);
+  document.getElementById('hsLandownersLbl').textContent = `${selected} · ${weekLabel('current')} Landowners`;
+  document.getElementById('hsShare').textContent = share.toFixed(1) + '%';
+  document.getElementById('hsShareLbl').textContent = 'Share of Portfolio';
 }
 
 function renderCards(){
   const d = getSelected();
-  const delta = d.acCurr - d.acPrev;
-  const pctChange = d.acPrev !== 0 ? (delta/d.acPrev*100) : 0;
-  const loDelta = d.loCurr - d.loPrev;
+  const latest = isLatestWeek();
+  const delta = latest ? (d.acCurr - d.acPrev) : 0;
+  const pctChange = (latest && d.acPrev !== 0) ? (delta/d.acPrev*100) : 0;
+  const loDelta = latest ? (d.loCurr - d.loPrev) : 0;
   const deltaClass = delta > 0 ? 'up-txt' : (delta < 0 ? 'down-txt' : '');
   const arrowClass = delta > 0 ? 'arrow-up' : (delta < 0 ? 'arrow-down' : 'arrow-flat');
   const arrow = `<span class="${arrowClass}">${delta > 0 ? '▲' : (delta < 0 ? '▼' : '—')}</span>`;
+  const share = (d.acCurr/totalCurr)*100;
 
-  let card1, card2, card4, card5;
-  if(week==='both'){
+  let card1, card2, card4, card5, weekChangeBlock;
+  if(latest){
     card1 = { lbl:`${weekLabel('current')} Acres`, val: fmt(d.acCurr,1), note:'selected report' };
     card2 = { lbl:`${weekLabel('previous')} Acres`, val: fmt(d.acPrev,1), note:'comparison report' };
-    const shareCurr = (d.acCurr/totalCurr*100).toFixed(1);
-    const sharePrev = (d.acPrev/totalPrev*100).toFixed(1);
-    card4 = { lbl:`Landowners (${weekLabel('current')} / ${weekLabel('previous')})`, val: `${fmtInt(d.loCurr)} <span class="sub">/ ${fmtInt(d.loPrev)}</span>`, note:`${loDelta>=0?'+':''}${loDelta} vs. ${weekLabel('previous')}` };
-    card5 = { lbl:`Share of Total Portfolio`, val: `${shareCurr}% <span class="sub">/ ${sharePrev}%</span>`, note:`${d.name} — ${weekLabel('current')} vs. ${weekLabel('previous')} share` };
+    card4 = { lbl:`Landowners (${weekLabel('current')})`, val: `${fmtInt(d.loCurr)} <span class="unit">parcels</span>`, note:`${loDelta>=0?'+':''}${loDelta} vs. ${weekLabel('previous')}` };
+    card5 = { lbl:`Share of Total Portfolio (${fmt(totalCurr,1)} acres, ${weekLabel('current')})`, val: `${share.toFixed(1)}%`, note:`${d.name} represents ${share.toFixed(1)}% of all tracked net acres on ${weekLabel('current')}` };
+    weekChangeBlock = `
+    <div class="card">
+      <div class="clbl">Week Change</div>
+      <div class="cnum ${deltaClass}">${arrow} ${fmt(Math.abs(delta),1)}</div>
+      <div class="cdelta ${deltaClass}">${pctChange>=0?'+':''}${pctChange.toFixed(1)}% vs. ${weekLabel('previous')}</div>
+    </div>`;
   } else {
-    const otherWeek = week==='current' ? 'previous' : 'current';
-    const share = (acresOf(d)/totalAcresFor(week))*100;
-    card1 = { lbl:`${weekLabel(week)} Acres`, val: fmt(acresOf(d),1), note:'selected report' };
-    card2 = { lbl:`${weekLabel(otherWeek)} Acres`, val: fmt(otherAcresOf(d),1), note:'comparison report' };
-    card4 = { lbl:`Landowners (${weekLabel(week)})`, val: `${fmtInt(loOf(d))} <span class="unit">parcels</span>`, note:`${loDelta>=0?'+':''}${loDelta} vs. ${weekLabel('previous')}` };
-    card5 = { lbl:`Share of Total Portfolio (${fmt(totalAcresFor(week),1)} acres, ${weekLabel(week)})`, val: `${share.toFixed(1)}%`, note:`${d.name} represents ${share.toFixed(1)}% of all tracked net acres on ${weekLabel(week)}` };
+    card1 = { lbl:`${weekLabel('current')} Acres`, val: fmt(d.acCurr,1), note:'this reporting date' };
+    card2 = { lbl:`Total Portfolio Acres`, val: fmt(totalCurr,1), note: weekLabel('current') };
+    card4 = { lbl:`Landowners (${weekLabel('current')})`, val: `${fmtInt(d.loCurr)} <span class="unit">parcels</span>`, note:'this status, this week' };
+    card5 = { lbl:`Share of Total Portfolio (${fmt(totalCurr,1)} acres, ${weekLabel('current')})`, val: `${share.toFixed(1)}%`, note:`${d.name} represents ${share.toFixed(1)}% of all tracked net acres on ${weekLabel('current')}` };
+    weekChangeBlock = `
+    <div class="card">
+      <div class="clbl">Week Change</div>
+      <div class="cnum" style="color:var(--text-lo);">—</div>
+      <div class="cdelta">Select the latest reporting date to see week-over-week change</div>
+    </div>`;
   }
 
   document.getElementById('cardRow').innerHTML = `
@@ -1315,11 +1297,7 @@ function renderCards(){
       <div class="cnum">${card2.val}</div>
       <div class="cdelta">${card2.note}</div>
     </div>
-    <div class="card">
-      <div class="clbl">Week Change</div>
-      <div class="cnum ${deltaClass}">${arrow} ${fmt(Math.abs(delta),1)}</div>
-      <div class="cdelta ${deltaClass}">${pctChange>=0?'+':''}${pctChange.toFixed(1)}% vs. ${weekLabel('previous')}</div>
-    </div>
+    ${weekChangeBlock}
     <div class="card">
       <div class="clbl">${card4.lbl}</div>
       <div class="cnum">${card4.val}</div>
@@ -1350,49 +1328,32 @@ function renderGauge(){
 
   bgOuter.setAttribute('d', describeArc(cx,cy,outerR,-90,90));
 
-  if(week==='both'){
-    const pctCurr = Math.max(0, Math.min(100, (d.acCurr/totalCurr)*100));
-    const pctPrev = Math.max(0, Math.min(100, (d.acPrev/totalPrev)*100));
-    fillOuter.setAttribute('d', describeArc(cx,cy,outerR,-90,-90+pctCurr*1.8));
-    bgInner.setAttribute('d', describeArc(cx,cy,innerR,-90,90));
-    fillInner.setAttribute('d', describeArc(cx,cy,innerR,-90,-90+pctPrev*1.8));
-    bgInner.style.display = 'block';
-    fillInner.style.display = 'block';
-    mark.style.display = 'none';
+  const pctMain = Math.max(0, Math.min(100, (d.acCurr/totalCurr)*100));
+  fillOuter.setAttribute('d', describeArc(cx,cy,outerR,-90,-90+pctMain*1.8));
+  bgInner.style.display = 'none';
+  fillInner.style.display = 'none';
 
-    document.getElementById('gaugePct').textContent = pctCurr.toFixed(1)+'%';
-    document.getElementById('gaugePct').setAttribute('fill', '#eaf1fb');
-    pctSub.textContent = pctPrev.toFixed(1)+'% '+weekLabel('previous');
-    pctSub.style.display = 'block';
-    document.getElementById('gaugeCaption').setAttribute('y','182');
-    document.getElementById('gaugeCaption').textContent = 'of total net acres';
-    document.getElementById('gaugeMainLbl').textContent = weekLabel('current')+' (outer ring)';
-    document.getElementById('gaugeMarkLbl').textContent = weekLabel('previous')+' (inner ring)';
-    document.getElementById('gaugeMarkDot').style.background = 'var(--prev)';
-  } else {
-    const pctMain = Math.max(0, Math.min(100, (acresOf(d)/totalAcresFor(week))*100));
-    const otherWeek = week==='current' ? 'previous' : 'current';
-    const pctOther = Math.max(0, Math.min(100, (otherAcresOf(d)/totalAcresFor(otherWeek))*100));
-
-    fillOuter.setAttribute('d', describeArc(cx,cy,outerR,-90,-90+pctMain*1.8));
-    bgInner.style.display = 'none';
-    fillInner.style.display = 'none';
-
+  if(isLatestWeek()){
+    const pctOther = Math.max(0, Math.min(100, (d.acPrev/totalPrev)*100));
     const markAngle = -90 + pctOther*1.8;
     const inner = polarToCartesian(cx,cy,outerR-16,markAngle);
     const outer = polarToCartesian(cx,cy,outerR+16,markAngle);
     mark.setAttribute('x1', inner.x); mark.setAttribute('y1', inner.y);
     mark.setAttribute('x2', outer.x); mark.setAttribute('y2', outer.y);
     mark.style.display = 'block';
-
-    document.getElementById('gaugePct').textContent = pctMain.toFixed(1)+'%';
-    pctSub.style.display = 'none';
-    document.getElementById('gaugeCaption').setAttribute('y','172');
-    document.getElementById('gaugeCaption').textContent = 'of total net acres';
-    document.getElementById('gaugeMainLbl').textContent = weekLabel(week);
-    document.getElementById('gaugeMarkLbl').textContent = weekLabel(otherWeek) + ' marker';
+    document.getElementById('gaugeMarkLbl').textContent = weekLabel('previous') + ' marker';
+    document.getElementById('gaugeMarkDot').style.background = 'var(--flat)';
+  } else {
+    mark.style.display = 'none';
+    document.getElementById('gaugeMarkLbl').textContent = 'No comparison for this week';
     document.getElementById('gaugeMarkDot').style.background = 'var(--flat)';
   }
+
+  document.getElementById('gaugePct').textContent = pctMain.toFixed(1)+'%';
+  pctSub.style.display = 'none';
+  document.getElementById('gaugeCaption').setAttribute('y','172');
+  document.getElementById('gaugeCaption').textContent = 'of total net acres';
+  document.getElementById('gaugeMainLbl').textContent = weekLabel('current');
   document.getElementById('gaugeStatusLabel').textContent = selected;
 }
 
@@ -1400,7 +1361,7 @@ function renderBars(){
   const rows = document.getElementById('barRows');
   rows.innerHTML = '';
 
-  if(week==='both'){
+  if(isLatestWeek()){
     const maxVal = Math.max(...data.map(d=>Math.max(d.acCurr,d.acPrev)));
     data.forEach(d=>{
       const row = document.createElement('div');
@@ -1426,10 +1387,10 @@ function renderBars(){
     });
     document.getElementById('compareTitle').textContent = `Net Acres by Status — ${weekLabel('current')} vs. ${weekLabel('previous')}`;
   } else {
-    const vals = data.map(d=>acresOf(d));
+    const vals = data.map(d=>d.acCurr);
     const maxVal = Math.max(...vals);
     data.forEach(d=>{
-      const val = acresOf(d);
+      const val = d.acCurr;
       const row = document.createElement('div');
       row.className = 'bar-row' + (d.name===selected ? ' sel':'');
       const c = statusColor(d.name);
@@ -1445,7 +1406,7 @@ function renderBars(){
       row.querySelector('.bar-track').onclick = ()=>{ selected = d.name; renderAll(); };
       rows.appendChild(row);
     });
-    document.getElementById('compareTitle').textContent = `Net Acres by Status — ${weekLabel(week)}`;
+    document.getElementById('compareTitle').textContent = `Net Acres by Status — ${weekLabel('current')}`;
   }
 }
 
@@ -1474,7 +1435,6 @@ function renderAll(){
   recomputeData();
   renderPills();
   renderWeekSeg();
-  renderWeekPicker();
   renderHeader();
   renderCards();
   renderGauge();
@@ -1798,7 +1758,14 @@ function renderHistoryAcres(){
   const legend = document.getElementById('historyAcresLegend');
   if(legend){
     const latest = history[history.length-1];
-    legend.innerHTML = HISTORY_STATUSES.map(st=>{
+    const allDim = selected === 'ALL' ? '' : ' style="opacity:0.4;"';
+    const allItem = `
+      <div class="legend-item" data-status="ALL"${allDim}>
+        <span class="swatch" style="background:#4c8dff"></span>
+        <span class="lname">ALL</span>
+        <span class="lval">${fmt(latest.totalAcres,1)}</span>
+      </div>`;
+    legend.innerHTML = allItem + HISTORY_STATUSES.map(st=>{
       const isSel = selected === 'ALL' || st === selected;
       const dim = isSel ? '' : ' style="opacity:0.4;"';
       return `
