@@ -335,7 +335,7 @@
   .money-panel-head h3{ font-family:'Space Grotesk',sans-serif; font-size:15.5px; font-weight:600;}
   .money-panel-head .tot{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--blue-pale); font-weight:700;}
 
-  .money-stat-strip{ display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin-bottom:18px; }
+  .money-stat-strip{ display:grid; grid-template-columns: repeat(2,1fr); gap:10px; margin-bottom:18px; }
   .mstat{ background: var(--panel-elev); border:1px solid var(--border-soft); border-radius:8px; padding:10px 12px;}
   .mstat .mlbl{ font-size:9.5px; color:var(--text-lo); text-transform:uppercase; letter-spacing:.07em; margin-bottom:4px;}
   .mstat .mval{ font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700; color:var(--text-hi);}
@@ -900,7 +900,6 @@
       <div class="money-stat-strip">
         <div class="mstat"><div class="mlbl">Sep 9</div><div class="mval" id="brokCurr">$35,293</div></div>
         <div class="mstat"><div class="mlbl">Sep 2</div><div class="mval" id="brokPrev">$95,121</div></div>
-        <div class="mstat"><div class="mlbl">Week Change</div><div class="mval change down-txt" id="brokChange">-62.9%</div></div>
       </div>
       <div class="donut-row">
         <svg viewBox="0 0 200 200">
@@ -1019,7 +1018,6 @@
       <div class="money-stat-strip">
         <div class="mstat"><div class="mlbl">Sep 9</div><div class="mval" id="bonusCurr">$516,123</div></div>
         <div class="mstat"><div class="mlbl">Sep 2</div><div class="mval" id="bonusPrev">$131,771</div></div>
-        <div class="mstat"><div class="mlbl">Week Change</div><div class="mval change up-txt" id="bonusChange">+291.7%</div></div>
       </div>
       <div class="donut-row">
         <svg viewBox="0 0 200 200">
@@ -1642,14 +1640,9 @@ function renderMoneyStats(prefix, items){
   const currTotal = sumBy(items,'curr');
   const prevTotal = sumBy(items,'prev');
   const total = sumBy(items,'total');
-  const change = prevTotal!==0 ? ((currTotal-prevTotal)/prevTotal*100) : 0;
-  const changeClass = change>0 ? 'up-txt' : (change<0 ? 'down-txt' : '');
   document.getElementById(prefix+'Total').textContent = fmtUsd(total) + ' total';
   document.getElementById(prefix+'Curr').textContent = fmtUsd(currTotal);
   document.getElementById(prefix+'Prev').textContent = fmtUsd(prevTotal);
-  const changeEl = document.getElementById(prefix+'Change');
-  changeEl.textContent = (change>=0?'+':'') + change.toFixed(1) + '%';
-  changeEl.className = 'mval change ' + changeClass;
 }
 
 function renderBudgetBars(elId, items){
