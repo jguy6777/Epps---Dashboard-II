@@ -522,6 +522,88 @@
   .bullet-bar-week{ position:absolute; top:6px; height:8px; background:#4c8dff; box-shadow:0 0 6px rgba(76,141,255,0.7); }
   .bullet-target{ position:absolute; top:-3px; bottom:-3px; width:2px; background:#fff; }
   .bullet-target-lbl{ position:absolute; top:-16px; font-size:9.5px; color:var(--text-lo); white-space:nowrap; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; }
+
+  /* ---------------- Tab bar ---------------- */
+  .tab-radio{
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+  }
+  .tab-bar{
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display:flex;
+    gap:8px;
+    background: rgba(15,21,34,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border:1px solid var(--border);
+    border-radius: 12px;
+    padding:6px;
+    margin-bottom: 24px;
+    width: fit-content;
+  }
+  .tab-btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    letter-spacing:.02em;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border:none;
+    background: transparent;
+    color: var(--text-mid);
+    cursor:pointer;
+    transition: all .15s ease;
+    display:inline-block;
+    user-select:none;
+  }
+  .tab-btn:hover{ color: var(--text-hi); }
+  /* Pure-CSS tab switching (no JS required): each radio input's :checked state
+     drives both its label's active styling and its matching panel's visibility
+     via general sibling combinators. Works even if the page is viewed somewhere
+     that blocks script execution. */
+  .tab-panel{ display:none; }
+  #tab-radio-dashboard:checked ~ #tabPanel-dashboard{ display:block; }
+  #tab-radio-money:checked ~ #tabPanel-money{ display:block; }
+  #tab-radio-dashboard:checked ~ .tab-bar label[for="tab-radio-dashboard"],
+  #tab-radio-money:checked ~ .tab-bar label[for="tab-radio-money"]{
+    background: var(--blue-soft);
+    color: #eaf1fb;
+    box-shadow: 0 0 0 1px var(--blue) inset;
+  }
+
+  .money-filter-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+    background: var(--panel);
+    border:1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 22px;
+  }
+  .money-filter-bar .filter-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color: var(--text-lo);
+  }
+  .money-filter-bar select{
+    font-family:'Inter', sans-serif;
+    font-size:13px;
+    color: var(--text-hi);
+    background: var(--panel-elev);
+    border:1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 12px;
+    cursor:pointer;
+    outline:none;
+  }
+  .money-filter-bar select:hover{ border-color: var(--blue-soft); }
+  .money-filter-note{ font-size:11.5px; color: var(--text-lo); }
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -565,6 +647,16 @@
       </div>
     </div>
   </header>
+
+  <input type="radio" name="epps-tab" id="tab-radio-dashboard" class="tab-radio" checked>
+  <input type="radio" name="epps-tab" id="tab-radio-money" class="tab-radio">
+
+  <nav class="tab-bar" id="tabBar">
+    <label class="tab-btn" for="tab-radio-dashboard">Acquisition Summary</label>
+    <label class="tab-btn" for="tab-radio-money">Brokerage &amp; Bonus</label>
+  </nav>
+
+<div class="tab-panel" id="tabPanel-dashboard">
 <div class="dash-columns">
   <div class="dash-left">
 <div class="section-head">
@@ -868,7 +960,18 @@
     </div>
     <div class="lo-note">Aggregated from the Raw Data tab (Sep 9, 2026) by owner ID — landowners with multiple tracts are combined into one row. 8 landowners with 0% recorded interest are excluded, matching the rest of this dashboard.</div>
   </div>
+  </div><!-- /dash-right -->
+  </div><!-- /dash-columns -->
+</div><!-- /tabPanel-dashboard -->
 
+  <div id="tabPanel-money" class="tab-panel" style="max-width:1600px; margin:0 auto;">
+  <div class="money-filter-bar">
+    <span class="filter-label">Filter by Project</span>
+    <select id="moneyProjectFilter">
+      <option value="all">All Projects</option>
+    </select>
+    <span class="money-filter-note" id="moneyFilterNote"></span>
+  </div>
   <div class="section-head">
     <div>
       <div class="eyebrow">EPPS · Money Tables</div>
@@ -1054,10 +1157,7 @@
   </div>
     </div>
   </div>
-
-  
   </div>
-</div>
 
   <footer>Source: EPPS Mapper Export — Raw Data tabs, Sep 2, 2026 &amp; Sep 9, 2026 · status = MAIL_STATUS · acres = NET_AC · landowner = LAND_OWNER / ASSOCIATEID · county = TRACT_COUNTY</footer>
 
@@ -1674,17 +1774,50 @@ function renderBudgetBars(elId, items){
   el.innerHTML = rowsHtml + totalRow;
 }
 
-function renderMoney(){
-  renderMoneyStats('brok', brokerage);
-  renderDonut('brokDonut','brokDonutVal','brokDonutLbl', brokerage, 'Total Billed');
-  renderMoneyLegend('brokLegend', brokerage);
-  renderBudgetBars('brokBudgetBars', brokerage);
+function renderMoney(projectFilter){
+  const filter = projectFilter || 'all';
+  const brokFiltered = filter === 'all' ? brokerage : brokerage.filter(x => x.name === filter);
+  const bonusFiltered = filter === 'all' ? bonus : bonus.filter(x => x.name === filter);
 
-  renderMoneyStats('bonus', bonus);
-  renderDonut('bonusDonut','bonusDonutVal','bonusDonutLbl', bonus, 'Total Bonus');
-  renderMoneyLegend('bonusLegend', bonus);
-  renderMoneyBars('bonusBars', bonus);
+  renderMoneyStats('brok', brokFiltered);
+  renderDonut('brokDonut','brokDonutVal','brokDonutLbl', brokFiltered, 'Total Billed');
+  renderMoneyLegend('brokLegend', brokFiltered);
+  renderBudgetBars('brokBudgetBars', brokFiltered);
+
+  renderMoneyStats('bonus', bonusFiltered);
+  renderDonut('bonusDonut','bonusDonutVal','bonusDonutLbl', bonusFiltered, 'Total Bonus');
+  renderMoneyLegend('bonusLegend', bonusFiltered);
+  renderMoneyBars('bonusBars', bonusFiltered);
+
+  const note = document.getElementById('moneyFilterNote');
+  if(note){
+    if(filter === 'all'){
+      note.textContent = '';
+    } else {
+      const shownIn = [];
+      if(brokFiltered.length) shownIn.push('Brokerage');
+      if(bonusFiltered.length) shownIn.push('Bonus');
+      note.textContent = shownIn.length ? `Showing "${filter}" in: ${shownIn.join(' & ')}` : `No brokerage or bonus data for "${filter}"`;
+    }
+  }
 }
+
+function initMoneyFilter(){
+  const select = document.getElementById('moneyProjectFilter');
+  if(!select) return;
+  const names = Array.from(new Set([...brokerage.map(x=>x.name), ...bonus.map(x=>x.name)]));
+  names.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  });
+  select.addEventListener('change', () => renderMoney(select.value));
+}
+initMoneyFilter();
+/* Tab switching (Acquisition Summary <-> Brokerage & Bonus) is handled purely with CSS
+   via the #tab-radio-dashboard / #tab-radio-money inputs — no JS needed, so
+   it keeps working even if this page is viewed somewhere that blocks scripts. */
 
 /* ---------------- History Trend (net acres by status per week, appended over time) ---------------- */
 
@@ -1758,7 +1891,7 @@ function renderHistoryAcres(){
   }
 }
 
-renderMoney();
+renderMoney('all');
 
 /* ---------------- Leaflet live map (esri-leaflet, token via /api/arcgis-token) ---------------- */
 function setLeafletStatus(msg){
