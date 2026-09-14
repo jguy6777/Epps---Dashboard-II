@@ -457,7 +457,7 @@
     pointer-events:none;
   }
   .lo-count{ font-size:12px; color:var(--text-lo); font-family:'JetBrains Mono',monospace; }
-  .lo-table-wrap{ overflow-x:auto; overflow-y:auto; max-height:196px; }
+  .lo-table-wrap{ overflow-x:auto; overflow-y:auto; max-height:720px; }
   table.lo-table thead th{
     position: sticky;
     top: 0;
@@ -500,6 +500,109 @@
   }
   .lo-empty{ text-align:center; color:var(--text-lo); padding:24px; font-size:13px; }
   .lo-note{ font-size:11.5px; color:var(--text-lo); margin-top:12px; line-height:1.5; }
+  table.lo-table tbody tr{ cursor:pointer; }
+
+  /* ---------------- Landowner detail modal ---------------- */
+  .lo-modal-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background: rgba(6,9,16,0.72);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    z-index: 50;
+    align-items:center;
+    justify-content:center;
+    padding: 24px;
+  }
+  .lo-modal-backdrop.open{ display:flex; }
+  .lo-modal{
+    background: linear-gradient(135deg, var(--panel-elev), var(--panel));
+    border:1px solid var(--border);
+    border-radius: 12px;
+    max-width: 560px;
+    width:100%;
+    max-height: 82vh;
+    overflow-y:auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .lo-modal-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--border);
+    position:sticky;
+    top:0;
+    background: var(--panel-elev);
+    border-radius: 12px 12px 0 0;
+  }
+  .lo-modal-head h2{ font-size:18px; }
+  .lo-modal-close{
+    background: transparent;
+    border:1px solid var(--border);
+    color: var(--text-mid);
+    font-size:18px;
+    line-height:1;
+    width:30px; height:30px;
+    border-radius:8px;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: all .15s ease;
+  }
+  .lo-modal-close:hover{ color: var(--text-hi); border-color: var(--blue-soft); }
+  .lo-modal-body{ padding: 18px 22px 22px; }
+  .lo-modal-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .lo-modal-label{ color:var(--text-lo); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .lo-modal-section-head{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color: var(--blue-pale);
+    margin: 20px 0 10px;
+  }
+  .lo-modal-tracts{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .lo-modal-tract-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-size:12px;
+    padding:7px 10px;
+    background: rgba(255,255,255,0.03);
+    border:1px solid var(--border-soft);
+    border-radius:7px;
+  }
+  .lo-modal-tract-id{ font-family:'JetBrains Mono', monospace; color:var(--text-hi); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .lo-modal-tract-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .lo-modal-tract-acres{ color:var(--text-mid); font-family:'JetBrains Mono', monospace; font-size:11.5px; }
+  .lo-modal-note{
+    font-size:13px;
+    color:var(--text-mid);
+    line-height:1.55;
+    background: rgba(255,255,255,0.03);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:12px 14px;
+  }
+  .lo-modal-note .lo-modal-note-date{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    color:var(--text-lo);
+    margin-bottom:5px;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+  }
 
   .bullet-legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:11.5px; color:var(--text-mid); margin-bottom:16px; }
   .bullet-legend .dot{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; vertical-align:middle; }
@@ -887,25 +990,6 @@
 
   <div class="section-head">
     <div>
-      <div class="eyebrow">EPPS · Trend</div>
-      <h2>History Trend</h2>
-      <p>Net acres by status, appended weekly — currently spans Aug 20 &rarr; Sep 9, 2026</p>
-    </div>
-  </div>
-
-  <div class="compare">
-    <div class="compare-head">
-      <h2 style="font-size:15px;">Net Acres by Status Over Time</h2>
-      <span>click a status to filter</span>
-    </div>
-    <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;">
-      <svg id="historyAcresSvg" viewBox="0 0 700 320" style="flex:1 1 460px; min-width:280px; max-width:700px; height:auto;"></svg>
-      <div class="legend" id="historyAcresLegend" style="flex:0 0 180px; cursor:pointer;"></div>
-    </div>
-  </div>
-
-  <div class="section-head">
-    <div>
       <div class="eyebrow">EPPS · Raw Data</div>
       <h2>Landowner Table</h2>
       <p>All 131 landowners as of Sep 9, 2026 — searchable by name, filtered by the Status pills above</p>
@@ -959,6 +1043,36 @@
       <div class="lo-empty" id="loEmpty" style="display:none;">No landowners match your search.</div>
     </div>
     <div class="lo-note">Aggregated from the Raw Data tab (Sep 9, 2026) by owner ID — landowners with multiple tracts are combined into one row. 8 landowners with 0% recorded interest are excluded, matching the rest of this dashboard.</div>
+  </div>
+
+  <div class="lo-modal-backdrop" id="loModalBackdrop">
+    <div class="lo-modal" role="dialog" aria-modal="true" aria-labelledby="loModalName">
+      <div class="lo-modal-head">
+        <div>
+          <div class="eyebrow">EPPS · Landowner Detail</div>
+          <h2 id="loModalName">&nbsp;</h2>
+        </div>
+        <button class="lo-modal-close" id="loModalClose" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="lo-modal-body">
+        <div class="lo-modal-row">
+          <span class="lo-modal-label">Status</span>
+          <span id="loModalStatus"></span>
+        </div>
+        <div class="lo-modal-row">
+          <span class="lo-modal-label">Broker Assigned</span>
+          <span id="loModalBroker"></span>
+        </div>
+        <div class="lo-modal-row">
+          <span class="lo-modal-label">Net Acres</span>
+          <span id="loModalAcres"></span>
+        </div>
+        <div class="lo-modal-section-head">Tracts (<span id="loModalTractCount"></span>)</div>
+        <div class="lo-modal-tracts" id="loModalTracts"></div>
+        <div class="lo-modal-section-head">Last Note</div>
+        <div class="lo-modal-note" id="loModalNote"></div>
+      </div>
+    </div>
   </div>
   </div><!-- /dash-right -->
   </div><!-- /dash-columns -->
@@ -1194,7 +1308,6 @@ const history = [
     landowners:{ACQUIRED:7, DELIVERED:37, LEGAL:3, MAILED:21, NEGOTIATING:63, 'STATE LANDS':4} },
 ];
 
-const HISTORY_STATUSES = ['ACQUIRED','NEGOTIATING','DELIVERED','MAILED','LEGAL','STATE LANDS'];
 
 const DATA_STATUS_ORDER = ['ACQUIRED','DELIVERED','LEGAL','MAILED','NEGOTIATING','STATE LANDS'];
 // currentWeekIdx points into history[] — the "current" week for every comparison on the page.
@@ -1236,14 +1349,6 @@ const ARCGIS_STATUS_FIELD = 'MAIL_STATUS'; // assumed to match the weekly mapper
 let leafletMap = null;
 let leafletParcelLayer = null;
 let leafletTokenRefreshTimer = null;
-
-function niceCeil(n){
-  if(n <= 0) return 1;
-  const mag = Math.pow(10, Math.floor(Math.log10(n)));
-  const steps = [1,2,2.5,5,10];
-  for(const s of steps){ if(n <= s*mag) return s*mag; }
-  return 10*mag;
-}
 
 // totalCurr/totalPrev/totalLoCurr/totalLoPrev are now computed in recomputeData() above
 
@@ -1504,6 +1609,145 @@ const landownerSnapshots = {
   'Sep 9': [{"aid":174888,"name":"BLACK GOLD PRODUCTION SERVICES, LLC","status":"NEGOTIATING","acres":1576.16,"tracts":12,"assigned":"SCOTT BROUSSARD"},{"aid":174971,"name":"RICKIE REESE AND KIMBERLY KIRKLAND ARLEDGE","status":"ACQUIRED","acres":131.68,"tracts":2,"assigned":"BOB DERISE"},{"aid":174891,"name":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","status":"NEGOTIATING","acres":325.0,"tracts":3,"assigned":"SCOTT BROUSSARD"},{"aid":175004,"name":"DAVES BAYOU LAND COMPANY, LLC","status":"NEGOTIATING","acres":32.0,"tracts":1,"assigned":"IAN MCCLELLAND"},{"aid":174948,"name":"LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT","status":"STATE LANDS","acres":14.29,"tracts":2,"assigned":"LARRY BERTRAND"},{"aid":174913,"name":"FARMERS ONE STOP, INC.","status":"NEGOTIATING","acres":1.3,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174989,"name":"TABITHA A. ROBERTSON DURBIN","status":"MAILED","acres":109.05,"tracts":4,"assigned":"SCOTT BROUSSARD"},{"aid":174901,"name":"DAVID R. ROBERTSON, II","status":"NEGOTIATING","acres":109.05,"tracts":4,"assigned":"SCOTT BROUSSARD"},{"aid":174960,"name":"NO MISTAKE PLANTATION, INC.","status":"NEGOTIATING","acres":289.89,"tracts":2,"assigned":"SCOTT BROUSSARD"},{"aid":174966,"name":"POVERTY POINT PRODUCE CO.","status":"NEGOTIATING","acres":1095.9,"tracts":9,"assigned":"SCOTT BROUSSARD"},{"aid":174986,"name":"STEVEN L. AND CHRISTIE HALE BROWN","status":"NEGOTIATING","acres":75.1,"tracts":2,"assigned":"BOB DERISE"},{"aid":174878,"name":"ADAM R. PLUNKETT","status":"LEGAL + NEGOTIATING","acres":133.96,"tracts":4,"assigned":"SCOTT BROUSSARD"},{"aid":174914,"name":"FARMLAND RESERVE, INC.","status":"DELIVERED","acres":138.0,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":174916,"name":"FREDERICK LAMAR AND NORA SHAY HALE","status":"NEGOTIATING","acres":44.0,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":175000,"name":"WEST CARROLL POLICE JURY","status":"STATE LANDS","acres":2.0,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":174925,"name":"HEZ NEWTON ELKINS","status":"NEGOTIATING","acres":112.22,"tracts":4,"assigned":"CRAIG PUGLIESE"},{"aid":174918,"name":"GLENNDELL FAMILY FARM CORPORATION","status":"DELIVERED + LEGAL","acres":362.76,"tracts":3,"assigned":"IAN MCCLELLAND"},{"aid":174985,"name":"STEVE WAYNE PLUNKETT","status":"MAILED","acres":8.0,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":175003,"name":"WILLIAM TERRY AND VICKI PRINE PILLARS","status":"NEGOTIATING","acres":1.0,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":174915,"name":"FRANK SCOTT MORAN","status":"NEGOTIATING","acres":82.59,"tracts":1,"assigned":"IAN MCCLELLAND"},{"aid":174899,"name":"COUNCILL INVESTMENTS GROUP, LLC","status":"NEGOTIATING","acres":146.67,"tracts":5,"assigned":"SCOTT BROUSSARD"},{"aid":174922,"name":"HALE HOUNDS, INC.","status":"DELIVERED + NEGOTIATING","acres":440.0,"tracts":5,"assigned":"SCOTT BROUSSARD"},{"aid":174952,"name":"MARTSON LAND AND MINERALS, LLC","status":"DELIVERED + NEGOTIATING","acres":146.67,"tracts":5,"assigned":"SCOTT BROUSSARD"},{"aid":174988,"name":"SWALLOW HARBOR, LLC","status":"NEGOTIATING","acres":146.67,"tracts":5,"assigned":"SCOTT BROUSSARD"},{"aid":174946,"name":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","status":"STATE LANDS","acres":402.41,"tracts":4,"assigned":"LARRY BERTRAND"},{"aid":174920,"name":"GREGORY ALLAN AND KIMBERLY LYNN FORSSE","status":"NEGOTIATING","acres":2.43,"tracts":1,"assigned":"IAN MCCLELLAND"},{"aid":174887,"name":"B-J FARMS, INC.","status":"DELIVERED","acres":10.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174983,"name":"STATE OF LOUISIANA","status":"STATE LANDS","acres":67.0,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":174984,"name":"STEPHEN PAUL RICE","status":"NEGOTIATING","acres":45.0,"tracts":3,"assigned":"SCOTT BROUSSARD"},{"aid":174975,"name":"RODNEY LEE SMITHERMAN","status":"DELIVERED","acres":4.0,"tracts":1,"assigned":"BOB DERISE"},{"aid":174898,"name":"CORINNE KELLY CALDER","status":"MAILED","acres":0.53,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":175635,"name":"ERIN KELLY KRAJEWSKI HARTZELL","status":"DELIVERED","acres":0.18,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":174921,"name":"H. LLOYD AND LOIS HAWKINS","status":"MAILED","acres":2.67,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175647,"name":"DEBORAH ANNE HAWKINS","status":"MAILED","acres":0.53,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175651,"name":"LAURA GENEVIEVE HAWKINS","status":"MAILED","acres":0.53,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175648,"name":"JENNIFER MARIE HAWKINS","status":"MAILED","acres":0.53,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175650,"name":"HENRY LLOYD HAWKINS, III","status":"MAILED","acres":0.53,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175649,"name":"LOIS ANNE HAWKINS KEITH","status":"DELIVERED","acres":0.53,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175634,"name":"KATHERINE KELLY","status":"DELIVERED","acres":0.18,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":174909,"name":"EDWIN ROY KELLY","status":"NEGOTIATING","acres":0.53,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":175633,"name":"FRANCIS STEPHEN KELLY, IV","status":"DELIVERED","acres":0.18,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":174904,"name":"DEBORAH KELLY SLAUGHTER","status":"NEGOTIATING","acres":0.53,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":174956,"name":"MARY KELLY WEAR","status":"NEGOTIATING","acres":0.53,"tracts":2,"assigned":"IAN MCCLELLAND"},{"aid":174947,"name":"LLOYD E. NEAL, INC.","status":"ACQUIRED","acres":419.96,"tracts":5,"assigned":"LARRY BERTRAND"},{"aid":174877,"name":"4-M LAND, LLC","status":"LEGAL","acres":303.01,"tracts":3,"assigned":"SCOTT BROUSSARD"},{"aid":174930,"name":"JASON L. HALE","status":"NEGOTIATING","acres":76.0,"tracts":2,"assigned":"LARRY BERTRAND"},{"aid":174934,"name":"JEFFERY ALAN AND ELIZABETH RUSSELL SIMMONS","status":"NEGOTIATING","acres":238.0,"tracts":2,"assigned":"LARRY BERTRAND"},{"aid":174962,"name":"PAUL C. GOWAN LAND TRUST","status":"NEGOTIATING","acres":400.0,"tracts":3,"assigned":"SCOTT BROUSSARD"},{"aid":174884,"name":"AMBER NICOLE WYATT","status":"DELIVERED","acres":2.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174945,"name":"L.L. GOLSON, INC.","status":"MAILED","acres":55.0,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":174941,"name":"JOHN WAYNE AND BONNIE HOLLEY GREGORY","status":"NEGOTIATING","acres":65.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174967,"name":"PRINE FAMILY TRUST","status":"MAILED","acres":67.4,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174995,"name":"TOMMY W. AND TAMMY C. HALE","status":"NEGOTIATING","acres":39.0,"tracts":1,"assigned":"BOB DERISE"},{"aid":174973,"name":"ROBERT ANDREW BRANDON HALE","status":"NEGOTIATING","acres":6.0,"tracts":1,"assigned":"BOB DERISE"},{"aid":174919,"name":"GRAYSON FORREST AND HANNAH ELISABETH PARKER","status":"DELIVERED","acres":11.88,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174940,"name":"JOHN SPENCER JOHNSTON","status":"NEGOTIATING","acres":12.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174990,"name":"TAMMY JOHNSTON","status":"NEGOTIATING","acres":44.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174939,"name":"JOHN SPENCER AND TAMMY HERRINGTON JOHNSTON","status":"NEGOTIATING","acres":27.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174970,"name":"REBECCA HALE BROWN","status":"DELIVERED","acres":0.02,"tracts":1,"assigned":"BOB DERISE"},{"aid":174932,"name":"JEANETTE HALE CARROLL","status":"DELIVERED","acres":0.02,"tracts":1,"assigned":"BOB DERISE"},{"aid":174950,"name":"MARIE HALE COBURN","status":"MAILED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174880,"name":"AGNES HALE GORDON","status":"MAILED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174900,"name":"DAVID HALE","status":"DELIVERED","acres":0.02,"tracts":1,"assigned":"BOB DERISE"},{"aid":174957,"name":"MICHAEL HALE","status":"DELIVERED","acres":0.02,"tracts":1,"assigned":"BOB DERISE"},{"aid":174993,"name":"TIMOTHY HALE","status":"MAILED","acres":0.02,"tracts":1,"assigned":"BOB DERISE"},{"aid":174998,"name":"WALTER \"W.T.\" HALE","status":"DELIVERED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174881,"name":"ALFRED L. HALE","status":"DELIVERED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174938,"name":"JOHN MITCHELL HALE","status":"ACQUIRED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174955,"name":"MARY ALICE HALE HAWKINS","status":"ACQUIRED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174976,"name":"RUBY HALE LINECUM","status":"MAILED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174905,"name":"DELLIE HALE SOUTHERN","status":"MAILED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174958,"name":"MILDRED HALE STANFIELD","status":"MAILED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174959,"name":"MYRTLE HALE WELCH","status":"DELIVERED","acres":0.09,"tracts":1,"assigned":"BOB DERISE"},{"aid":174908,"name":"DUCKMOSS, LLC","status":"DELIVERED","acres":160.0,"tracts":1,"assigned":"IAN MCCLELLAND"},{"aid":175196,"name":"CAROLYN Y. BISHOP, USUFRUCTARY","status":"DELIVERED","acres":30.0,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":174951,"name":"MARK E. AND REBECCA S. MILLER","status":"DELIVERED","acres":148.36,"tracts":3,"assigned":"LARRY BERTRAND"},{"aid":174981,"name":"SON OF DAVID INVESTMENTS, LLC","status":"NEGOTIATING","acres":1.0,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":174907,"name":"DONDOROSA FARMS, LLC","status":"NEGOTIATING","acres":80.38,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":174906,"name":"DONALD M. RALEY","status":"NEGOTIATING","acres":80.38,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":174961,"name":"NORENE SELLERS","status":"MAILED","acres":11.58,"tracts":1,"assigned":"BOB DERISE"},{"aid":174883,"name":"ALLEN LAMAR AND MARIAN NORENE WALLER FREY","status":"NEGOTIATING","acres":3.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174997,"name":"WALNUT GROVE BAPTIST CHURCH","status":"NEGOTIATING","acres":1.56,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":174902,"name":"DAVID TODD MCVAY","status":"DELIVERED","acres":2.63,"tracts":1,"assigned":"IAN MCCLELLAND"},{"aid":174931,"name":"JASON M. HUDSPETH","status":"NEGOTIATING","acres":1.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174954,"name":"MARVIN DEAN LEATHERMAN","status":"ACQUIRED","acres":2.59,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":175002,"name":"WILLIAM H. AND DANA GAY PAYNE","status":"NEGOTIATING","acres":1.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174953,"name":"MARTY A. AND MELISSA B. SIMMS","status":"NEGOTIATING","acres":29.87,"tracts":4,"assigned":"LARRY BERTRAND"},{"aid":174999,"name":"WALTER DAVID AND HELEN CORLEY MCVAY","status":"NEGOTIATING","acres":1.0,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":174978,"name":"RUSSELL AND CHERISH SIMMS MORRIS","status":"NEGOTIATING","acres":1.98,"tracts":1,"assigned":"BOB DERISE"},{"aid":174929,"name":"JAMES PAUL AND THERESA HERMAN MORGAN","status":"NEGOTIATING","acres":6.1,"tracts":2,"assigned":"LARRY BERTRAND"},{"aid":174928,"name":"JAMES KEITH RUSK","status":"ACQUIRED","acres":20.54,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174926,"name":"JAIME LYNN RUSK","status":"ACQUIRED","acres":20.54,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174992,"name":"THE MACON CROSSING, LLC","status":"NEGOTIATING","acres":94.42,"tracts":2,"assigned":"SCOTT BROUSSARD"},{"aid":174963,"name":"PAULA M. SKIPPER","status":"NEGOTIATING","acres":76.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174882,"name":"ALICE FAY HENRY","status":"MAILED","acres":4.0,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174991,"name":"THE ARCHAEOLOGICAL CONSERVANCY","status":"NEGOTIATING","acres":3.0,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174969,"name":"REBECCA DOLES CHANEY","status":"NEGOTIATING","acres":48.33,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":175547,"name":"CAROL ANN ELKINS CHRISMAN","status":"DELIVERED","acres":5.37,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":175545,"name":"RICHARD DALE ELKINS","status":"DELIVERED","acres":5.37,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":175546,"name":"BOBBY STEPHEN ELKINS","status":"DELIVERED","acres":5.37,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":174994,"name":"TOM WADE ELKINS","status":"NEGOTIATING","acres":16.11,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":175549,"name":"BRUCE HANEY","status":"DELIVERED","acres":8.06,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":175548,"name":"CYNTHIA LYNN HANEY","status":"DELIVERED","acres":8.06,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":174927,"name":"JAMES ALAN MISENHEIMER","status":"DELIVERED","acres":8.06,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":174903,"name":"DEBORAH ANN DOLES RAMSEY","status":"NEGOTIATING","acres":48.33,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":174968,"name":"REAGAN WEST CARROLL PROPERTIES, LLC","status":"NEGOTIATING","acres":96.67,"tracts":2,"assigned":"CRAIG PUGLIESE"},{"aid":174964,"name":"PAULA MISENHEIMER SCHILDROTH","status":"DELIVERED","acres":8.06,"tracts":2,"assigned":"ALVIN LASSEIGNE"},{"aid":174943,"name":"JOSHUA TRAVIS BOX","status":"DELIVERED","acres":2.21,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":175636,"name":"FRANK AND OUIDA SHIVERS ECKARD","status":"NEGOTIATING","acres":50.79,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":174892,"name":"BRENTON RAY PRINE","status":"DELIVERED","acres":26.0,"tracts":1,"assigned":"BOB DERISE"},{"aid":174996,"name":"VICKY PRINE PILLARS","status":"NEGOTIATING","acres":26.5,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":174949,"name":"LYDE WORTHINGTON RAWLS","status":"NEGOTIATING","acres":118.0,"tracts":2,"assigned":"SCOTT BROUSSARD"},{"aid":174935,"name":"JEREMY HEATH PRINE","status":"MAILED","acres":1.0,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174979,"name":"RUSSELL RAY AND RHONDA BROCK PRINE","status":"NEGOTIATING","acres":79.0,"tracts":2,"assigned":"BOB DERISE"},{"aid":174933,"name":"JEFF L. AND KAREN B. SYKES","status":"DELIVERED","acres":1.0,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":174972,"name":"RICKY AND JESSICA CARROLL STARKS, JR.","status":"DELIVERED","acres":2.0,"tracts":1,"assigned":"BOB DERISE"},{"aid":174977,"name":"RUSSELL RAY PRINE","status":"NEGOTIATING","acres":26.0,"tracts":1,"assigned":"BOB DERISE"},{"aid":174965,"name":"PENNY PRINE BRADBURY","status":"DELIVERED","acres":26.5,"tracts":1,"assigned":"BOB DERISE"},{"aid":174936,"name":"JOHN CECIL AND NORMA LYNN STARKS, III","status":"NEGOTIATING","acres":80.0,"tracts":2,"assigned":"LARRY BERTRAND"},{"aid":174982,"name":"SOUTHMEATH, LLC","status":"NEGOTIATING","acres":109.11,"tracts":3,"assigned":"SCOTT BROUSSARD"},{"aid":174987,"name":"SUGARLAND FARM, INC.","status":"NEGOTIATING","acres":1.73,"tracts":1,"assigned":"CRAIG PUGLIESE"},{"aid":175001,"name":"WEST MEATH, LLC","status":"NEGOTIATING","acres":51.5,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174885,"name":"ANDREA LENEA CARRAWAY","status":"DELIVERED","acres":3.75,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174886,"name":"BARBARA CARTER CARRAWAY, USUFRUCTUARY","status":"MAILED","acres":11.25,"tracts":1,"assigned":"ALVIN LASSEIGNE"},{"aid":174897,"name":"CONNIE CARTER MCNEIL","status":"MAILED","acres":12.33,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174895,"name":"CARY JOHN STEVENS","status":"NEGOTIATING","acres":51.52,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174893,"name":"BRIAN LANE MILLER","status":"NEGOTIATING","acres":53.33,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174974,"name":"ROBERT STEVEN MILLER","status":"DELIVERED","acres":26.67,"tracts":1,"assigned":"BOB DERISE"},{"aid":174942,"name":"JOSEPH FRANCIS AND TERRI SYLVESTRI","status":"NEGOTIATING","acres":40.0,"tracts":1,"assigned":"LARRY BERTRAND"},{"aid":174944,"name":"KEVIN LAMAR AND AMY HALE","status":"NEGOTIATING","acres":85.0,"tracts":1,"assigned":"SCOTT BROUSSARD"},{"aid":174980,"name":"SBS FARMS, LLC","status":"NEGOTIATING","acres":35.0,"tracts":1,"assigned":"CRAIG PUGLIESE"}],
 };
 
+/* ---------------- Landowner Detail (tracts, broker, most recent note) ----------------
+   Keyed by landowner name (matches landownerData's `name`). tracts[].status/acres are
+   per-tract, nonzero-interest rows only. lastNote is the most recent Notes-tab entry
+   across all of that landowner's tracts, or null if none was found this week. */
+const landownerDetails = {
+  "4-M LAND, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E14-02","status":"LEGAL","acres":71.07},{"id":"LA123-19N10E14-02-SS","status":"LEGAL","acres":0.75},{"id":"LA123-19N10E23-05","status":"LEGAL","acres":231.19}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "ADAM R. PLUNKETT":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E1-05","status":"NEGOTIATING","acres":23},{"id":"LA123-19N10E2-02","status":"NEGOTIATING","acres":62},{"id":"LA123-19N10E23-16","status":"NEGOTIATING","acres":8.96},{"id":"LA123-20N10E34-03","status":"LEGAL","acres":40}],"lastNote":{"date":"Sep 2, 2026","text":"8/4/2026: Spoke to Whitney Plunkett, the daughter of Adam R. Plunkett and notified her that the offer letter was being sent, and for Mr. Plunkett to give me a call once he's reviewed the offer. She said she would give him the message."}},
+  "AGNES HALE GORDON":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"MAILED","acres":0.09}],"lastNote":{"date":"Sep 1, 2026","text":"9/1/26, Alvin met with one of Agnes's daughter, Rhonda Prine, to try to get as much information on the family as possible. Gathered a ton of names, numbers and places of residence. Many are deceased."}},
+  "ALFRED L. HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.09}],"lastNote":null},
+  "ALICE FAY HENRY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E26-03","status":"MAILED","acres":4}],"lastNote":{"date":"Aug 5, 2026","text":"8/4/2026: (318) 878-9786 was disconnected."}},
+  "ALLEN LAMAR AND MARIAN NORENE WALLER FREY":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E23-07","status":"NEGOTIATING","acres":3}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: spoke to Allen, he is still working in Texas and hasn't had time to get with a notary to get it signed and mailed."}},
+  "AMBER NICOLE WYATT":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E16-04","status":"DELIVERED","acres":2}],"lastNote":{"date":"Sep 3, 2026","text":"8/21/2026: received text from Amber, she was advised to not accept our current offer."}},
+  "ANDREA LENEA CARRAWAY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E4-07","status":"DELIVERED","acres":3.75}],"lastNote":null},
+  "B-J FARMS, INC.":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E13-03","status":"DELIVERED","acres":10}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: left VM."}},
+  "BARBARA CARTER CARRAWAY, USUFRUCTUARY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E4-07","status":"MAILED","acres":11.25}],"lastNote":null},
+  "BLACK GOLD PRODUCTION SERVICES, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA035-19N10E1-01","status":"NEGOTIATING","acres":313.83},{"id":"LA035-19N10E12-01","status":"NEGOTIATING","acres":139.11},{"id":"LA035-19N10E12-01-SS","status":"NEGOTIATING","acres":0.54},{"id":"LA035-19N11E18-01","status":"NEGOTIATING","acres":7.56},{"id":"LA035-19N11E18-02","status":"NEGOTIATING","acres":9.59},{"id":"LA035-19N11E5-01","status":"NEGOTIATING","acres":101.16},{"id":"LA035-19N11E5-02","status":"NEGOTIATING","acres":15},{"id":"LA035-19N11E6-01","status":"NEGOTIATING","acres":581.31},{"id":"LA035-19N11E6-03","status":"NEGOTIATING","acres":20.5},{"id":"LA035-19N11E7-01","status":"NEGOTIATING","acres":328.56},{"id":"LA035-19N11E7-03","status":"NEGOTIATING","acres":54.97},{"id":"LA035-19N11E7-04","status":"NEGOTIATING","acres":4.03}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: left VM for Tabitha."}},
+  "BOBBY STEPHEN ELKINS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":4.63},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":0.74}],"lastNote":null},
+  "BRANDON F. AND ROBIN DELANE MILLER MULHERN":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA035-19N10E12-02","status":"NEGOTIATING","acres":105.64},{"id":"LA035-19N10E13-01","status":"NEGOTIATING","acres":184.36},{"id":"LA035-19N10E24-01","status":"NEGOTIATING","acres":35.0}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "BRENTON RAY PRINE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E3-03","status":"DELIVERED","acres":26}],"lastNote":{"date":"Aug 11, 2026","text":"8/11/2026: left VM."}},
+  "BRIAN LANE MILLER":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E9-02","status":"NEGOTIATING","acres":53.33}],"lastNote":{"date":"Aug 21, 2026","text":"8/20/2026: met with attorney Donald Carroll who stated he is representing this landowner, and we discussed the offer. Mr. Carroll stated that he will be working on redlines to the agreement form, and will contact me to further discuss once he completed his review of the agreement form."}},
+  "BRUCE HANEY":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":6.94},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":1.11}],"lastNote":null},
+  "CAROL ANN ELKINS CHRISMAN":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":4.63},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":0.74}],"lastNote":null},
+  "CAROLYN Y. BISHOP, USUFRUCTARY":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E22-03","status":"DELIVERED","acres":30}],"lastNote":null},
+  "CARY JOHN STEVENS":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E4-10","status":"NEGOTIATING","acres":51.52}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "CONNIE CARTER MCNEIL":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E4-08","status":"MAILED","acres":12.33}],"lastNote":{"date":"Sep 3, 2026","text":"8/27/2026: received call from Connie. Her son has been in the hospital and thats why he hasnt returned calls until now. We got an updated address from her, and we told her we will resend her IOL packet for her review."}},
+  "CORINNE KELLY CALDER":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"MAILED","acres":0.27},{"id":"LA123-19N10E14-08","status":"MAILED","acres":0.27}],"lastNote":{"date":"Sep 1, 2026","text":"9/1/26: We emailed Mimi to follow up on progress with the assignment. She has already executed it and it should be recorded in West Carroll Parish. She is on vacation but will call us after she returns."}},
+  "COUNCILL INVESTMENTS GROUP, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E11-02","status":"NEGOTIATING","acres":27.57},{"id":"LA123-19N10E12-04","status":"NEGOTIATING","acres":36.05},{"id":"LA123-19N10E14-03","status":"NEGOTIATING","acres":35.83},{"id":"LA123-19N10E15-06","status":"NEGOTIATING","acres":33.92},{"id":"LA123-19N10E3-10","status":"NEGOTIATING","acres":13.29}],"lastNote":{"date":"Sep 8, 2026","text":"9/5/2026: received call from David Woltz. He is going to pass my contact info along to his attorney, and his attorney will be reviewing the agreement and redlining."}},
+  "CYNTHIA LYNN HANEY":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":6.94},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":1.11}],"lastNote":null},
+  "DAVES BAYOU LAND COMPANY, LLC":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA035-19N10E24-04","status":"NEGOTIATING","acres":32}],"lastNote":{"date":"Sep 8, 2026","text":"9/8/26: Agent emailed Mr. Schneider the agreement in word form and asked him to review and redline anything that he would like to see changed. We also asked him what he feels a fair offer would be. Received response back still wanting to know where we came up with that number."}},
+  "DAVID HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.02}],"lastNote":null},
+  "DAVID R. ROBERTSON, II":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA035-19N11E18-02","status":"NEGOTIATING","acres":11.73},{"id":"LA035-19N11E6-03","status":"NEGOTIATING","acres":25.09},{"id":"LA035-19N11E7-03","status":"NEGOTIATING","acres":67.3},{"id":"LA035-19N11E7-04","status":"NEGOTIATING","acres":4.93}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: left VM for Tabitha."}},
+  "DAVID TODD MCVAY":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E23-10","status":"DELIVERED","acres":2.63}],"lastNote":{"date":"Sep 4, 2026","text":"Alvin went by the residence on 9/1 at about 4pm. No one came to the door."}},
+  "DEBORAH ANN DOLES RAMSEY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E3-01","status":"NEGOTIATING","acres":41.67},{"id":"LA123-20N10E34-02","status":"NEGOTIATING","acres":6.67}],"lastNote":{"date":"Aug 24, 2026","text":"Called and spoke with Deborah Ramsey on 8/24/26 at 2:40pm at 318-245-6255. She confirmed that she and her sister, Rebecca Chaney have both received their packets (IOLs). She told me the family is waiting on Hez Elkins to give them more info and guidance on the document before making a decision."}},
+  "DEBORAH ANNE HAWKINS":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E13-07","status":"MAILED","acres":0.27},{"id":"LA123-19N10E14-08","status":"MAILED","acres":0.27}],"lastNote":null},
+  "DEBORAH KELLY SLAUGHTER":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"NEGOTIATING","acres":0.27},{"id":"LA123-19N10E14-08","status":"NEGOTIATING","acres":0.27}],"lastNote":{"date":"Sep 8, 2026","text":"9/8/26: We emailed Deborah Slaughter the No Carbon Capture provision for her review. She responded back asking the name of the formation and Bottom depth as she would like to ask for a pugh clause."}},
+  "DELLIE HALE SOUTHERN":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"MAILED","acres":0.09}],"lastNote":null},
+  "DONALD M. RALEY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E23-04","status":"NEGOTIATING","acres":51.27},{"id":"LA123-19N10E26-02","status":"NEGOTIATING","acres":29.12}],"lastNote":{"date":"Aug 25, 2026","text":"Called LO on 8/25/26 at 10:24am to tell him about his counteroffer regarding the extra 100 acres outside of the reservoir. I LVM stating that we couldn't add any acreage outside of the boundaries of the reservoir."}},
+  "DONDOROSA FARMS, LLC":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E23-04","status":"NEGOTIATING","acres":51.27},{"id":"LA123-19N10E26-02","status":"NEGOTIATING","acres":29.12}],"lastNote":{"date":"Aug 25, 2026","text":"Called LO on 8/25/26 at 10:24am to tell him about his counteroffer regarding the extra 100 acres outside of the reservoir. I LVM stating that we couldn't add any acreage outside of the boundaries of the reservoir."}},
+  "DUCKMOSS, LLC":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E22-02","status":"NEGOTIATING","acres":160}],"lastNote":{"date":"Sep 9, 2026","text":"9/9/26: Agent emailed Mr. Long to touch base on the agreement."}},
+  "EDWIN ROY KELLY":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"NEGOTIATING","acres":0.27},{"id":"LA123-19N10E14-08","status":"NEGOTIATING","acres":0.27}],"lastNote":{"date":"Aug 17, 2026","text":"8/17/26: Called 817-709-3532 and Spoke with Edwin Kelly regarding the agreement. He will review and discuss with family."}},
+  "ERIN KELLY KRAJEWSKI HARTZELL":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"DELIVERED","acres":0.09},{"id":"LA123-19N10E14-08","status":"DELIVERED","acres":0.09}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/26: Agent called and spoke to Mrs. Hartzell. She has not yet received the IOL packet but stated she will sign and return it once she receives it. Mrs. Hartzell's phone number is 925-381-4773."}},
+  "FARMERS ONE STOP, INC.":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA035-19N10E24-06","status":"NEGOTIATING","acres":1.3}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "FARMLAND RESERVE, INC.":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E1-06","status":"DELIVERED","acres":20.71},{"id":"LA123-19N10E2-07","status":"DELIVERED","acres":117.29}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/26: Agent emailed Tyler to follow up on the agreement and see if we could answer any questions they may have."}},
+  "FRANCIS STEPHEN KELLY, IV":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"DELIVERED","acres":0.09},{"id":"LA123-19N10E14-08","status":"DELIVERED","acres":0.09}],"lastNote":{"date":"Sep 4, 2026","text":"Katherine Kelly has POA over Francis Stephen Kelly, IV"}},
+  "FRANK AND OUIDA SHIVERS ECKARD":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E3-02","status":"NEGOTIATING","acres":50.79}],"lastNote":{"date":"Sep 2, 2026","text":"I spoke to the attorney Michael Ellington today and he is checking with his client for the counter offer."}},
+  "FRANK SCOTT MORAN":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E10-05","status":"NEGOTIATING","acres":82.59}],"lastNote":{"date":"Sep 4, 2026","text":"9/3/26: Agent met with Mr. Moran at his residence and discussed the project. He is very uncomfortable with the Surface language and wants to do exploration at some point."}},
+  "FREDERICK LAMAR AND NORA SHAY HALE":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E1-08","status":"NEGOTIATING","acres":3},{"id":"LA123-19N10E2-09","status":"NEGOTIATING","acres":41}],"lastNote":{"date":"Sep 9, 2026","text":"9/8/26: Agent met with Mrs. Forsse and Mrs. Plunkett and completed ADH for Nora Shay Hale."}},
+  "GLENNDELL FAMILY FARM CORPORATION":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E10-01","status":"LEGAL","acres":319},{"id":"LA123-19N10E10-02","status":"NEGOTIATING","acres":34},{"id":"LA123-19N10E10-02-SS","status":"NEGOTIATING","acres":9.76}],"lastNote":{"date":"Sep 8, 2026","text":"9/8/26: Mrs. Labatt called and she has received our IOL packet. She was confused about what tracts we are trying to renew and they have a 50 year reservation from the Elkins acquisition. We explained to her that our legal team was still reviewing the tracts and we would follow up when we receive more info."}},
+  "GRAYSON FORREST AND HANNAH ELISABETH PARKER":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E2-10","status":"DELIVERED","acres":11.88}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went by the residence again on 8/20 and left contact letter with contact info on it."}},
+  "GREGORY ALLAN AND KIMBERLY LYNN FORSSE":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E11-04","status":"NEGOTIATING","acres":2.43}],"lastNote":{"date":"Sep 9, 2026","text":"9/8/26: Agent met with Mrs. Forsse and Mrs. Plunkett and completed ADH for Nora Shay Hale."}},
+  "H. LLOYD AND LOIS HAWKINS":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E13-07","status":"MAILED","acres":1.33},{"id":"LA123-19N10E14-08","status":"MAILED","acres":1.33}],"lastNote":{"date":"Aug 18, 2026","text":"Found Obituary for Lois Hawkins. She has 5 children: Deborah Hawkins, Jennifer Hawkins Randle, Lloyd Hawkins, III, Laura Mansar Guerra and Anne Keith. Called several phone numbers for each and L/M's"}},
+  "HALE HOUNDS, INC.":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E11-02","status":"NEGOTIATING","acres":82.72},{"id":"LA123-19N10E12-04","status":"NEGOTIATING","acres":108.15},{"id":"LA123-19N10E14-03","status":"DELIVERED","acres":107.5},{"id":"LA123-19N10E15-06","status":"NEGOTIATING","acres":101.77},{"id":"LA123-19N10E3-10","status":"NEGOTIATING","acres":39.86}],"lastNote":{"date":"Sep 2, 2026","text":"8/20/2026: met with Amy and Kevin Hale and discussed agreement. They will review it and follow up with redlines/questions."}},
+  "HENRY LLOYD HAWKINS, III":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E13-07","status":"MAILED","acres":0.27},{"id":"LA123-19N10E14-08","status":"MAILED","acres":0.27}],"lastNote":null},
+  "HEZ NEWTON ELKINS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E16-03","status":"NEGOTIATING","acres":80},{"id":"LA123-19N10E3-01","status":"NEGOTIATING","acres":27.78},{"id":"LA123-20N10E34-02","status":"NEGOTIATING","acres":4.44}],"lastNote":{"date":"Aug 21, 2026","text":"8/6/2026- Spoke with Hez. We agreed to discuss further once he received the offer letter."}},
+  "JAIME LYNN RUSK":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E24-02","status":"ACQUIRED","acres":20.54}],"lastNote":{"date":"Sep 1, 2026","text":"On 9/1/26, Alvin met with Jaime to have her initial the changed legal description."}},
+  "JAMES ALAN MISENHEIMER":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":6.94},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":1.11}],"lastNote":null},
+  "JAMES KEITH RUSK":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E24-02","status":"ACQUIRED","acres":20.54}],"lastNote":{"date":"Sep 8, 2026","text":"James told me that he executed the agreement and put it the mail on Thursday 9/3."}},
+  "JAMES PAUL AND THERESA HERMAN MORGAN":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E23-18","status":"NEGOTIATING","acres":2},{"id":"LA123-19N10E24-03","status":"NEGOTIATING","acres":4.1}],"lastNote":{"date":"Aug 27, 2026","text":"Mr. Morgan sent an email requesting information and clarification to the agreement. Item 11 on the form and he wanted to make sure it did not prevent him from selling his property. He requested an additional one time payment of $5,000.00 because they live on the property. jpmtkm@aim.com I will get the answers and get back to him ASAP."}},
+  "JASON L. HALE":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E14-05","status":"NEGOTIATING","acres":32.8},{"id":"LA123-19N10E15-05","status":"NEGOTIATING","acres":43.2}],"lastNote":{"date":"Sep 4, 2026","text":"Mr. Hale returned my call and we discussed the IOL and he did not like the offer or the form. He said that his family has hired attorneys and that he will do what ever the attorneys suggest. We discussed the expropriation process somewhat, IOL then FOL. He mentioned that there were other companies contacting them for the same storage rights. He said he would keep me posted on any new information that may come up about the attorneys. We spoke for over an hour."}},
+  "JASON M. HUDSPETH":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E23-11","status":"NEGOTIATING","acres":1}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "JEANETTE HALE CARROLL":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.02}],"lastNote":null},
+  "JEFF L. AND KAREN B. SYKES":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E3-08","status":"DELIVERED","acres":1}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went to the residence on 8/20/26 at 11:20am and met with Karen. She told me that they will continue to review the paperwork. I gave her my contact info and told her to give me a call if they had any questions."}},
+  "JEFFERY ALAN AND ELIZABETH RUSSELL SIMMONS":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E15-01","status":"NEGOTIATING","acres":163.5},{"id":"LA123-19N10E16-01","status":"NEGOTIATING","acres":74.5}],"lastNote":{"date":"Sep 4, 2026","text":"Mr. Simmons called me back and he is waiting and his family is getting an attorney and he will let me know if he has any questions. Alvin will not meet with him."}},
+  "JENNIFER MARIE HAWKINS":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E13-07","status":"MAILED","acres":0.27},{"id":"LA123-19N10E14-08","status":"MAILED","acres":0.27}],"lastNote":null},
+  "JEREMY HEATH PRINE":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E3-06","status":"MAILED","acres":1}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin met with his aunt, Vicky Pillars. She said that Jeremy (goes by Heath) was in jail. She wasn't sure if he was still in jail."}},
+  "JOHN CECIL AND NORMA LYNN STARKS, III":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E4-01","status":"NEGOTIATING","acres":40},{"id":"LA123-19N10E4-02","status":"NEGOTIATING","acres":40}],"lastNote":{"date":"Sep 4, 2026","text":"I spoke to Ms. Norma and she was not happy with the offer and the form as she said that the agreement gives Trunkline to surface rights and mineral rights on their properties. I am requesting a form in word to send to Ms. Starks email address starksiiifarms@hotmail.com I sent Mrs. Starks the agreement and Exhibit A in word."}},
+  "JOHN MITCHELL HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"ACQUIRED","acres":0.09}],"lastNote":{"date":"Sep 4, 2026","text":"Alvin spoke to John this morning (9/4/26). He said he and his sister, Alice Hale, signed the agreement and sent it back this week. His cell is 318-434-0278."}},
+  "JOHN SPENCER AND TAMMY HERRINGTON JOHNSTON":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E2-13","status":"NEGOTIATING","acres":27}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "JOHN SPENCER JOHNSTON":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E2-11","status":"NEGOTIATING","acres":12}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "JOHN WAYNE AND BONNIE HOLLEY GREGORY":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E2-03","status":"NEGOTIATING","acres":65}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "JOSEPH FRANCIS AND TERRI SYLVESTRI":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E9-03","status":"NEGOTIATING","acres":40}],"lastNote":{"date":"Sep 4, 2026","text":"Alvin will pass by the house next week for a face to face cold call."}},
+  "JOSHUA TRAVIS BOX":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E3-02","status":"DELIVERED","acres":2.21}],"lastNote":{"date":"Sep 4, 2026","text":"I sent Alvin a request to go by and see if he can have a face to face."}},
+  "KATHERINE KELLY":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"DELIVERED","acres":0.09},{"id":"LA123-19N10E14-08","status":"DELIVERED","acres":0.09}],"lastNote":{"date":"Sep 4, 2026","text":"8/17/26: Called 401-952-5420, L/M 8/18/26: Katherine \"Kappy\" Kelly returned my called. She stated her father has been dead for 25 years and was unsure why they sent the IOL to his address. We let her know that they would resend IOL. She said she would email us the contact info for Erin Hartzell and Francis Kelly,IV. 8/19/26: Kappy emailed us the contact information. 8/31/26: Called Kappy to Follow up, L/M"}},
+  "KEVIN LAMAR AND AMY HALE":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E9-04","status":"NEGOTIATING","acres":85}],"lastNote":{"date":"Sep 2, 2026","text":"8/20/2026: met with Amy and Kevin Hale and discussed agreement. They will review it and follow up with redlines/questions."}},
+  "L.L. GOLSON, INC.":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E2-01","status":"MAILED","acres":55}],"lastNote":null},
+  "LA OFFICE OF STATE PARKS, RECREATION AND TOURISM":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E11-03","status":"STATE LANDS","acres":30.68},{"id":"LA123-19N10E12-03","status":"STATE LANDS","acres":45.33},{"id":"LA123-19N10E13-02","status":"STATE LANDS","acres":140.33},{"id":"LA123-19N10E14-04","status":"STATE LANDS","acres":186.08}],"lastNote":null},
+  "LAURA GENEVIEVE HAWKINS":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E13-07","status":"MAILED","acres":0.27},{"id":"LA123-19N10E14-08","status":"MAILED","acres":0.27}],"lastNote":null},
+  "LLOYD E. NEAL, INC.":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E14-01","status":"ACQUIRED","acres":22.71},{"id":"LA123-19N10E15-03","status":"ACQUIRED","acres":46.84},{"id":"LA123-19N10E22-01","status":"ACQUIRED","acres":168.6},{"id":"LA123-19N10E23-01","status":"ACQUIRED","acres":83.75},{"id":"LA123-19N10E23-03","status":"ACQUIRED","acres":98.06}],"lastNote":{"date":"Sep 1, 2026","text":"On 8/31/26, went by to drop off his check and to get him to initial the legal description pages. Completed tasks."}},
+  "LOIS ANNE HAWKINS KEITH":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E13-07","status":"DELIVERED","acres":0.27},{"id":"LA123-19N10E14-08","status":"DELIVERED","acres":0.27}],"lastNote":null},
+  "LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA035-19N10E24-05","status":"STATE LANDS","acres":7.14},{"id":"LA123-19N10E23-21","status":"STATE LANDS","acres":7.14}],"lastNote":null},
+  "LYDE WORTHINGTON RAWLS":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E3-05","status":"NEGOTIATING","acres":40.83},{"id":"LA123-20N10E34-01","status":"NEGOTIATING","acres":77.17}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "MARIE HALE COBURN":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"MAILED","acres":0.09}],"lastNote":null},
+  "MARK E. AND REBECCA S. MILLER":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E22-04","status":"DELIVERED","acres":90.21},{"id":"LA123-19N10E23-02","status":"DELIVERED","acres":41.35},{"id":"LA123-19N10E23-20","status":"DELIVERED","acres":16.8}],"lastNote":{"date":"Sep 4, 2026","text":"I called and left a message."}},
+  "MARTSON LAND AND MINERALS, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E11-02","status":"NEGOTIATING","acres":27.57},{"id":"LA123-19N10E12-04","status":"NEGOTIATING","acres":36.05},{"id":"LA123-19N10E14-03","status":"NEGOTIATING","acres":35.83},{"id":"LA123-19N10E15-06","status":"NEGOTIATING","acres":33.92},{"id":"LA123-19N10E3-10","status":"DELIVERED","acres":13.29}],"lastNote":{"date":"Sep 8, 2026","text":"9/5/2026: received call from David Woltz. He is going to pass my contact info along to his attorney, and his attorney will be reviewing the agreement and redlining."}},
+  "MARTY A. AND MELISSA B. SIMMS":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E23-14","status":"NEGOTIATING","acres":9.12},{"id":"LA123-19N10E23-19","status":"NEGOTIATING","acres":1.03},{"id":"LA123-19N10E23-22","status":"NEGOTIATING","acres":14.26},{"id":"LA123-19N10E26-06","status":"NEGOTIATING","acres":5.46}],"lastNote":{"date":"Sep 4, 2026","text":"Johnny Hoychick attorney that Mr. Simms will retain next week. He is in the middle of harvest and he will have his attorney give me a call."}},
+  "MARVIN DEAN LEATHERMAN":{"broker":"LARRY BERTRAND","tracts":[{"id":"LA123-19N10E23-12","status":"ACQUIRED","acres":2.59}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went by the residence on 8/20/26, but there was no home at that address. The address may be incorrect. I did find an address in Lake Providence - 181 South Road."}},
+  "MARY ALICE HALE HAWKINS":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"ACQUIRED","acres":0.09}],"lastNote":{"date":"Aug 18, 2026","text":"Spoke to Mary, 931-332-2495, she said she received the paperwork, had a few questions, but said she planned to sign everything and send it back in the mail."}},
+  "MARY KELLY WEAR":{"broker":"IAN MCCLELLAND","tracts":[{"id":"LA123-19N10E13-07","status":"NEGOTIATING","acres":0.27},{"id":"LA123-19N10E14-08","status":"NEGOTIATING","acres":0.27}],"lastNote":{"date":"Aug 18, 2026","text":"8/17/26: Mary Wear returned my call. She is working on getting the agreement signed and notarized and returning it to us."}},
+  "MICHAEL HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.02}],"lastNote":null},
+  "MILDRED HALE STANFIELD":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"MAILED","acres":0.09}],"lastNote":null},
+  "MYRTLE HALE WELCH":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.09}],"lastNote":null},
+  "NO MISTAKE PLANTATION, INC.":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA035-19N11E7-02","status":"NEGOTIATING","acres":123.34},{"id":"LA035-19N11E8-01","status":"NEGOTIATING","acres":166.55}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: spoke to Tom, the family is still reviewing the agreement. 8/26: Tom O'Neal is redlining agreement"}},
+  "NORENE SELLERS":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E23-06","status":"MAILED","acres":11.58}],"lastNote":{"date":"Sep 4, 2026","text":"Spoke with Norene Sellers. She advised she has moved and now resides in an assisted living home in Monroe, Louisiana. She asked that the offer letter be sent to her at 4380 Old Sterlington Road, Monroe, LA 71203 rather than the 6148 Hwy 134, Epps address on file. I advised that once she receives the letter we could set up a meeting to review the agreement with her. She agreed to that. Address change forwarded to Nicole for update."}},
+  "PAUL C. GOWAN LAND TRUST":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E15-02","status":"NEGOTIATING","acres":166.53},{"id":"LA123-19N10E16-02","status":"NEGOTIATING","acres":157.72},{"id":"LA123-19N10E9-01","status":"NEGOTIATING","acres":75.75}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: left message for Mike."}},
+  "PAULA M. SKIPPER":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E26-01","status":"NEGOTIATING","acres":76}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: returned call of attorney David Doughty and he asked us to email him the WORD agreement so that he may redline it, which we did email to him."}},
+  "PAULA MISENHEIMER SCHILDROTH":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":6.94},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":1.11}],"lastNote":{"date":"Aug 24, 2026","text":"Called 318-539-2719 and 318-464-0340 both bad numbers. LVM on 318-464-2582 not sure if this is a correct number."}},
+  "PENNY PRINE BRADBURY":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E3-14","status":"DELIVERED","acres":26.5}],"lastNote":{"date":"Aug 5, 2026","text":"8/4/2026: All bad numbers except (318) 235-7266, unable to leave message."}},
+  "POVERTY POINT PRODUCE CO.":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E1-03","status":"NEGOTIATING","acres":128.4},{"id":"LA123-19N10E1-07","status":"NEGOTIATING","acres":20.77},{"id":"LA123-19N10E10-06","status":"NEGOTIATING","acres":201.88},{"id":"LA123-19N10E11-01","status":"NEGOTIATING","acres":422.02},{"id":"LA123-19N10E12-05","status":"NEGOTIATING","acres":112.7},{"id":"LA123-19N10E2-08","status":"NEGOTIATING","acres":99.23},{"id":"LA123-19N10E2-15","status":"NEGOTIATING","acres":0.9},{"id":"LA123-19N10E3-11","status":"NEGOTIATING","acres":30},{"id":"LA123-20N10E33-01","status":"NEGOTIATING","acres":80}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "PRINE FAMILY TRUST":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E2-04","status":"MAILED","acres":67.4}],"lastNote":null},
+  "REAGAN WEST CARROLL PROPERTIES, LLC":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"NEGOTIATING","acres":83.33},{"id":"LA123-20N10E34-02","status":"NEGOTIATING","acres":13.33}],"lastNote":{"date":"Aug 21, 2026","text":"Spoke with Mrs. Reagan, she has moved, 108 Rosemeade Court, Aledo, TX 76008. I need to send her an updated letter. It appears someone signed for the initial IOL @ 5480 Hwy 80, Arcadia, however Mrs. Reagan did not sign."}},
+  "REBECCA DOLES CHANEY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E3-01","status":"NEGOTIATING","acres":41.67},{"id":"LA123-20N10E34-02","status":"NEGOTIATING","acres":6.67}],"lastNote":{"date":"Aug 24, 2026","text":"Rebecca's sister, Deborah Ramsey confirmed on 8/24/26 to Alvin per phone call, that Rebecca has received her packet (IOL). And they will wait to hear from Hez Elkins before making a decision."}},
+  "REBECCA HALE BROWN":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.02}],"lastNote":null},
+  "RICHARD DALE ELKINS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"DELIVERED","acres":4.63},{"id":"LA123-20N10E34-02","status":"DELIVERED","acres":0.74}],"lastNote":null},
+  "RICKIE REESE AND KIMBERLY KIRKLAND ARLEDGE":{"broker":"BOB DERISE","tracts":[{"id":"LA035-19N10E1-02","status":"ACQUIRED","acres":78.97},{"id":"LA035-19N11E6-02","status":"ACQUIRED","acres":52.71}],"lastNote":{"date":"Aug 18, 2026","text":"received signed agreements in the mail."}},
+  "RICKY AND JESSICA CARROLL STARKS, JR.":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E3-12","status":"DELIVERED","acres":2}],"lastNote":null},
+  "ROBERT ANDREW BRANDON HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-06","status":"NEGOTIATING","acres":6}],"lastNote":{"date":"Sep 4, 2026","text":"Called a few times, lm. No answer."}},
+  "ROBERT STEVEN MILLER":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E9-02","status":"DELIVERED","acres":26.67}],"lastNote":null},
+  "RODNEY LEE SMITHERMAN":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E13-06","status":"DELIVERED","acres":4}],"lastNote":{"date":"Aug 5, 2026","text":"Called Rodney Smitherman at (318) 282-7102, no answer / no voicemail reached. Sent text message identifying myself and requesting a call back. Number unverified. Will attempt again."}},
+  "RUBY HALE LINECUM":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"MAILED","acres":0.09}],"lastNote":null},
+  "RUSSELL AND CHERISH SIMMS MORRIS":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E23-17","status":"NEGOTIATING","acres":1.98}],"lastNote":{"date":"Sep 4, 2026","text":"Spoke with Russell Morris. He advised he has received the packet and is consulting with a family attorney to see what their options are. He would not provide the attorney's name. He also stated that his brother in law, Marty Simms, would be handling his tracts the same way. No offer terms discussed. Follow up next week."}},
+  "RUSSELL RAY AND RHONDA BROCK PRINE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E3-07","status":"NEGOTIATING","acres":78},{"id":"LA123-19N10E3-09","status":"NEGOTIATING","acres":1}],"lastNote":{"date":"Aug 18, 2026","text":"Follow up call with Russell Prine. He has retained attorney Molly Clement and has reviewed the offer with her. He advised the offer is not enough money but that we are about half way there. He countered at $2,000 per acre and stated he will sign tomorrow at that number. No agreement made on my end; counter relayed for review."}},
+  "RUSSELL RAY PRINE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E3-13","status":"NEGOTIATING","acres":26}],"lastNote":{"date":"Aug 18, 2026","text":"Follow up call with Russell Prine. He has retained attorney Molly Clement and has reviewed the offer with her. He advised the offer is not enough money but that we are about half way there. He countered at $2,000 per acre and stated he will sign tomorrow at that number. No agreement made on my end; counter relayed for review."}},
+  "SBS FARMS, LLC":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E9-05","status":"NEGOTIATING","acres":35}],"lastNote":{"date":"Sep 3, 2026","text":"Left message, I have not been able to connect with them."}},
+  "SON OF DAVID INVESTMENTS, LLC":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E22-05","status":"NEGOTIATING","acres":1}],"lastNote":{"date":"Aug 28, 2026","text":"Called and spoke with one of his workers, he is not in."}},
+  "SOUTHMEATH, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E4-03","status":"NEGOTIATING","acres":68.48},{"id":"LA123-19N10E4-04","status":"NEGOTIATING","acres":34.75},{"id":"LA123-19N10E4-09","status":"NEGOTIATING","acres":5.88}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "STATE OF LOUISIANA":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E13-04","status":"STATE LANDS","acres":16.37},{"id":"LA123-19N10E14-07","status":"STATE LANDS","acres":50.63}],"lastNote":null},
+  "STEPHEN PAUL RICE":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E13-05","status":"NEGOTIATING","acres":3.86},{"id":"LA123-19N10E14-06","status":"NEGOTIATING","acres":25.9},{"id":"LA123-19N10E15-04","status":"NEGOTIATING","acres":15.24}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "STEVE WAYNE PLUNKETT":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E10-03","status":"MAILED","acres":8}],"lastNote":{"date":"Aug 21, 2026","text":"Spoke with Mr. Plunkett, he returned my call from last week. He did not receive IOL, I have updated his address to P.O. Box 202, Epps, LA 71237. We are resending him an IOL to correct address."}},
+  "STEVEN L. AND CHRISTIE HALE BROWN":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E1-04","status":"NEGOTIATING","acres":70},{"id":"LA123-19N10E23-09","status":"NEGOTIATING","acres":5.1}],"lastNote":{"date":"Aug 18, 2026","text":"Spoke with Mr. Brown again, he said he is waiting for the poverty point produce offer. I am going to hand him over to Bob since that is a much bigger trade."}},
+  "SUGARLAND FARM, INC.":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E4-05","status":"NEGOTIATING","acres":1.73}],"lastNote":{"date":"Sep 3, 2026","text":"Left message, she did not answer."}},
+  "SWALLOW HARBOR, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E11-02","status":"NEGOTIATING","acres":27.57},{"id":"LA123-19N10E12-04","status":"NEGOTIATING","acres":36.05},{"id":"LA123-19N10E14-03","status":"NEGOTIATING","acres":35.83},{"id":"LA123-19N10E15-06","status":"NEGOTIATING","acres":33.92},{"id":"LA123-19N10E3-10","status":"NEGOTIATING","acres":13.29}],"lastNote":{"date":"Sep 8, 2026","text":"9/5/2026: received call from David Woltz. He is going to pass my contact info along to his attorney, and his attorney will be reviewing the agreement and redlining."}},
+  "TABITHA A. ROBERTSON DURBIN":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA035-19N11E18-02","status":"MAILED","acres":11.73},{"id":"LA035-19N11E6-03","status":"MAILED","acres":25.09},{"id":"LA035-19N11E7-03","status":"MAILED","acres":67.3},{"id":"LA035-19N11E7-04","status":"MAILED","acres":4.93}],"lastNote":{"date":"Sep 3, 2026","text":"9/3/2026: left VM for Tabitha."}},
+  "TAMMY JOHNSTON":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E2-12","status":"NEGOTIATING","acres":44}],"lastNote":{"date":"Aug 28, 2026","text":"Spoke with Mr. Marshall, he is reviewing the lease and will get back to us."}},
+  "THE ARCHAEOLOGICAL CONSERVANCY":{"broker":"ALVIN LASSEIGNE","tracts":[{"id":"LA123-19N10E26-04","status":"NEGOTIATING","acres":3}],"lastNote":{"date":"Aug 19, 2026","text":"Alvin called Jessica Crawford and spoke with her regarding the agreement. She said they have received the packet. She is out of the country, but will get back with me next week. Office 662-326-6465 and her cell 662-326-0025."}},
+  "THE MACON CROSSING, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E25-01","status":"NEGOTIATING","acres":47.21},{"id":"LA123-19N10E26-05","status":"NEGOTIATING","acres":47.21}],"lastNote":{"date":"Aug 24, 2026","text":"Scott Broussard met with Amy Hale on Thursday 8/20/26 to discuss tracts."}},
+  "TIMOTHY HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"MAILED","acres":0.02}],"lastNote":null},
+  "TOM WADE ELKINS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-01","status":"NEGOTIATING","acres":13.89},{"id":"LA123-20N10E34-02","status":"NEGOTIATING","acres":2.22}],"lastNote":{"date":"Aug 17, 2026","text":"Spoke with his sister in law, she is going to put me in touch with Tom."}},
+  "TOMMY W. AND TAMMY C. HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-05","status":"NEGOTIATING","acres":39}],"lastNote":{"date":"Aug 6, 2026","text":"Spoke with Tammy, Mr. Tommy is currently in the hospital. She said she would be on the lookout for the letter and will be in touch. 318-282-5952"}},
+  "VICKY PRINE PILLARS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E3-04","status":"NEGOTIATING","acres":26.5}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went to the residence on 8/20/26 at 11:10am and met with Vicky. She told me that her brother, Russell Prine, will be negotiating for her, and will handle everything."}},
+  "WALNUT GROVE BAPTIST CHURCH":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E23-08","status":"NEGOTIATING","acres":1.56}],"lastNote":{"date":"Sep 3, 2026","text":"Talked with Todd Perry and he feels like they are good to move forward, he has to talke to a few more folks."}},
+  "WALTER \"W.T.\" HALE":{"broker":"BOB DERISE","tracts":[{"id":"LA123-19N10E2-14","status":"DELIVERED","acres":0.09}],"lastNote":null},
+  "WALTER DAVID AND HELEN CORLEY MCVAY":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E23-15","status":"NEGOTIATING","acres":1}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went to the residence on 8/20/26 at 11:49am. He met with Walter. he seemed like he was going to fill out the paperwork and send it back. I gave him my contact info if he had any quesitons."}},
+  "WEST CARROLL POLICE JURY":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E1-09","status":"STATE LANDS","acres":2}],"lastNote":null},
+  "WEST MEATH, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E4-06","status":"NEGOTIATING","acres":51.5}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "WILLIAM H. AND DANA GAY PAYNE":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E23-13","status":"NEGOTIATING","acres":1}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
+  "WILLIAM TERRY AND VICKI PRINE PILLARS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E10-04","status":"NEGOTIATING","acres":1}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went to the residence on 8/20/26 at 11:10am and met with Vicky. She told me that her brother, Russell Prine, will be negotiating for her, and will handle everything."}}
+};
+
+
 let loSort = { key: 'acres', dir: -1 };
 let loSearchTerm = '';
 
@@ -1523,7 +1767,6 @@ function renderAll(){
   renderBars();
   renderLandownerTable();
   renderMovement();
-  renderHistoryAcres();
   updateLeafletMapFilter();
 }
 renderAll();
@@ -1572,7 +1815,7 @@ function renderLandownerTable(){
   } else {
     empty.style.display = 'none';
     tbody.innerHTML = rows.map(r => `
-      <tr>
+      <tr data-name="${r.name.replace(/"/g,'&quot;')}">
         <td class="lo-name">${r.name}</td>
         <td>${r.status.split(' + ').map(s => `<span class="lo-status-chip" style="background:${statusColor(s)}">${s}</span>`).join(' ')}</td>
         <td>${r.acres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
@@ -1580,6 +1823,9 @@ function renderLandownerTable(){
         <td>${r.assigned}</td>
       </tr>
     `).join('');
+    tbody.querySelectorAll('tr[data-name]').forEach(tr=>{
+      tr.addEventListener('click', ()=> openLandownerModal(tr.getAttribute('data-name')));
+    });
   }
 
   document.querySelectorAll('#loTable th').forEach(th=>{
@@ -1594,6 +1840,53 @@ function renderLandownerTable(){
     }
   });
 }
+
+/* ---------------- Landowner detail modal ---------------- */
+function openLandownerModal(name){
+  const detail = (typeof landownerDetails !== 'undefined') ? landownerDetails[name] : null;
+  const row = landownerData.find(r => r.name === name);
+  if(!row) return;
+
+  document.getElementById('loModalName').textContent = name;
+  document.getElementById('loModalStatus').innerHTML = row.status.split(' + ')
+    .map(s => `<span class="lo-status-chip" style="background:${statusColor(s)}">${s}</span>`).join(' ');
+  document.getElementById('loModalBroker').textContent = (detail && detail.broker) || row.assigned;
+  document.getElementById('loModalAcres').textContent = row.acres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  const tracts = (detail && detail.tracts) || [];
+  document.getElementById('loModalTractCount').textContent = tracts.length || row.tracts;
+  const tractsEl = document.getElementById('loModalTracts');
+  if(tracts.length){
+    tractsEl.innerHTML = tracts.map(t => `
+      <div class="lo-modal-tract-row">
+        <span class="lo-modal-tract-id">${t.id}</span>
+        <span class="lo-modal-tract-right">
+          <span class="lo-status-chip" style="background:${statusColor(t.status)}">${t.status}</span>
+          <span class="lo-modal-tract-acres">${t.acres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})} ac</span>
+        </span>
+      </div>`).join('');
+  } else {
+    tractsEl.innerHTML = `<div class="lo-modal-note">Tract-level detail isn't available for this landowner in the current export.</div>`;
+  }
+
+  const noteEl = document.getElementById('loModalNote');
+  const note = detail && detail.lastNote;
+  noteEl.innerHTML = note
+    ? `<span class="lo-modal-note-date">${note.date}</span>${note.text.replace(/</g,'&lt;')}`
+    : `<span style="color:var(--text-lo);">No notes on file for this landowner in the current export.</span>`;
+
+  document.getElementById('loModalBackdrop').classList.add('open');
+}
+function closeLandownerModal(){
+  document.getElementById('loModalBackdrop').classList.remove('open');
+}
+document.getElementById('loModalClose').addEventListener('click', closeLandownerModal);
+document.getElementById('loModalBackdrop').addEventListener('click', (e)=>{
+  if(e.target.id === 'loModalBackdrop') closeLandownerModal();
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape') closeLandownerModal();
+});
 
 document.getElementById('loSearchInput').addEventListener('input', (e)=>{
   loSearchTerm = e.target.value;
@@ -1818,78 +2111,6 @@ initMoneyFilter();
 /* Tab switching (Acquisition Summary <-> Brokerage & Bonus) is handled purely with CSS
    via the #tab-radio-dashboard / #tab-radio-money inputs — no JS needed, so
    it keeps working even if this page is viewed somewhere that blocks scripts. */
-
-/* ---------------- History Trend (net acres by status per week, appended over time) ---------------- */
-
-function renderHistoryAcres(){
-  const svg = document.getElementById('historyAcresSvg');
-  if(!svg || !history.length) return;
-  const W=700, H=320, ML=55, MR=20, MT=20, MB=40;
-  const plotW = W-ML-MR, plotH = H-MT-MB;
-  const n = history.length;
-  const xFor = i => n===1 ? ML+plotW/2 : ML + (plotW * i/(n-1));
-  let maxVal = 0;
-  HISTORY_STATUSES.forEach(st => history.forEach(h => { maxVal = Math.max(maxVal, h.acres[st]||0); }));
-  const yMax = niceCeil(maxVal * 1.08);
-  const yFor = v => MT + plotH - (v/yMax)*plotH;
-
-  let svgParts = [];
-  // gridlines + y labels
-  const gridSteps = 5;
-  for(let g=0; g<=gridSteps; g++){
-    const val = yMax * g/gridSteps;
-    const y = yFor(val);
-    svgParts.push(`<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}" stroke="#182236" stroke-width="1"/>`);
-    svgParts.push(`<text x="${ML-8}" y="${(y+3).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#5c6b82">${fmt(val,0)}</text>`);
-  }
-  // x labels
-  history.forEach((h,i)=>{
-    const x = xFor(i);
-    svgParts.push(`<text x="${x.toFixed(1)}" y="${H-MB+18}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10.5" fill="#93a1b8">${h.date}</text>`);
-  });
-  // lines + points per status — dim non-selected series when a specific status is filtered
-  HISTORY_STATUSES.forEach(st=>{
-    const color = STATUS_COLOR_MAP[st];
-    const isSel = selected === 'ALL' || st === selected;
-    const opacity = isSel ? 1 : 0.15;
-    const strokeW = (selected !== 'ALL' && st === selected) ? 3.5 : 2.5;
-    const pts = history.map((h,i)=>`${xFor(i).toFixed(1)},${yFor(h.acres[st]||0).toFixed(1)}`).join(' ');
-    svgParts.push(`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round" opacity="${opacity}"/>`);
-    history.forEach((h,i)=>{
-      const x = xFor(i), y = yFor(h.acres[st]||0);
-      svgParts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${color}" stroke="#0b0f1a" stroke-width="1.5" opacity="${opacity}" style="cursor:pointer;" data-status="${st}"><title>${st} — ${h.date}: ${fmt(h.acres[st]||0,1)} ac</title></circle>`);
-    });
-  });
-  svg.innerHTML = svgParts.join('');
-  svg.querySelectorAll('circle[data-status]').forEach(c=>{
-    c.addEventListener('click', ()=>{ selected = c.getAttribute('data-status'); renderAll(); });
-  });
-
-  const legend = document.getElementById('historyAcresLegend');
-  if(legend){
-    const latest = history[history.length-1];
-    const allDim = selected === 'ALL' ? '' : ' style="opacity:0.4;"';
-    const allItem = `
-      <div class="legend-item" data-status="ALL"${allDim}>
-        <span class="swatch" style="background:#4c8dff"></span>
-        <span class="lname">ALL</span>
-        <span class="lval">${fmt(latest.totalAcres,1)}</span>
-      </div>`;
-    legend.innerHTML = allItem + HISTORY_STATUSES.map(st=>{
-      const isSel = selected === 'ALL' || st === selected;
-      const dim = isSel ? '' : ' style="opacity:0.4;"';
-      return `
-      <div class="legend-item" data-status="${st}"${dim}>
-        <span class="swatch" style="background:${STATUS_COLOR_MAP[st]}"></span>
-        <span class="lname">${st}</span>
-        <span class="lval">${fmt(latest.acres[st]||0,1)}</span>
-      </div>`;
-    }).join('');
-    legend.querySelectorAll('.legend-item').forEach(item=>{
-      item.addEventListener('click', ()=>{ selected = item.getAttribute('data-status'); renderAll(); });
-    });
-  }
-}
 
 renderMoney('all');
 
