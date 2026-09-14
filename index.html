@@ -421,6 +421,14 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
+  .lo-filter-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+    padding-bottom:14px;
+    border-bottom: 1px solid var(--border-soft);
+  }
   .lo-controls{
     display:flex;
     justify-content:space-between;
@@ -992,11 +1000,12 @@
     <div>
       <div class="eyebrow">EPPS · Raw Data</div>
       <h2>Landowner Table</h2>
-      <p>All 131 landowners as of Sep 9, 2026 — searchable by name, filtered by the Status pills above</p>
+      <p>All 131 landowners as of Sep 9, 2026 — searchable by name, filterable by status</p>
     </div>
   </div>
 
   <div class="lo-panel" style="margin-bottom:20px;">
+    <div class="lo-filter-row" id="loPillRow"></div>
     <div class="lo-controls">
       <div class="lo-search">
         <input type="text" id="loSearchInput" placeholder="Search landowner name…">
@@ -1385,7 +1394,13 @@ function describeArc(cx, cy, r, startAngle, endAngle){
 function getSelected(){ return selected==='ALL' ? ALL_STATUS : data.find(x=>x.name===selected); }
 
 function renderPills(){
-  const row = document.getElementById('pillRow');
+  renderPillsInto('pillRow');
+  renderPillsInto('loPillRow');
+}
+
+function renderPillsInto(containerId){
+  const row = document.getElementById(containerId);
+  if(!row) return;
   row.innerHTML = '';
 
   const allBtn = document.createElement('button');
