@@ -465,6 +465,24 @@
     pointer-events:none;
   }
   .lo-count{ font-size:12px; color:var(--text-lo); font-family:'JetBrains Mono',monospace; }
+  .lo-export-btn{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background: var(--panel-elev);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:8px 14px;
+    color:var(--text-mid);
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    font-weight:500;
+    cursor:pointer;
+    transition: all .15s ease;
+    white-space:nowrap;
+  }
+  .lo-export-btn:hover{ color:var(--text-hi); border-color:var(--blue-soft); background: var(--panel); }
+  .lo-export-btn:disabled{ opacity:0.5; cursor:default; }
   .lo-table-wrap{ overflow-x:auto; overflow-y:auto; max-height:720px; }
   table.lo-table thead th{
     position: sticky;
@@ -710,6 +728,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -1229,6 +1248,7 @@
         <input type="text" id="loSearchInput2" placeholder="Search landowner or tract…">
       </div>
       <div class="lo-count" id="loCount2">3 tracts</div>
+      <button class="lo-export-btn" id="loExportBtn2" type="button">⬇ Export to Excel</button>
     </div>
     <div class="lo-table-wrap">
       <table class="lo-table" id="loTable2">
@@ -1797,7 +1817,7 @@ const landownerDetails = {
 
 const tractTableInstances = [
   { tableId: 'loTable', tableBodyId: 'loTableBody', emptyId: 'loEmpty', countId: 'loCount', searchInputId: 'loSearchInput', sort: { key: 'tractId', dir: 1 }, searchTerm: '' },
-  { tableId: 'loTable2', tableBodyId: 'loTableBody2', emptyId: 'loEmpty2', countId: 'loCount2', searchInputId: 'loSearchInput2', sort: { key: 'tractId', dir: 1 }, searchTerm: '' },
+  { tableId: 'loTable2', tableBodyId: 'loTableBody2', emptyId: 'loEmpty2', countId: 'loCount2', searchInputId: 'loSearchInput2', sort: { key: 'tractId', dir: 1 }, searchTerm: '', exportButtonId: 'loExportBtn2' },
 ];
 
 /* Flattens landownerDetails into one row per tract — Tract, Landowner, Status, Acres,
@@ -1885,6 +1905,7 @@ function renderTractTable(instance){
   });
 
   countEl.textContent = `${rows.length} tract${rows.length===1?'':'s'}`;
+  instance.currentRows = rows;
 
   if(rows.length === 0){
     tbody.innerHTML = '';
@@ -1986,7 +2007,41 @@ tractTableInstances.forEach(instance => {
       renderTractTable(instance);
     });
   });
+  if(instance.exportButtonId){
+    const btn = document.getElementById(instance.exportButtonId);
+    if(btn) btn.addEventListener('click', ()=> exportTractTableToXlsx(instance));
+  }
 });
+
+/* Exports exactly what's currently on screen for this table instance — respecting the
+   active status filter, search term, and sort — as a downloadable .xlsx file via SheetJS
+   (loaded from the CDN script tag in <head>). */
+function exportTractTableToXlsx(instance){
+  const btn = document.getElementById(instance.exportButtonId);
+  if(typeof XLSX === 'undefined'){
+    if(btn) btn.textContent = 'Export unavailable (offline?)';
+    return;
+  }
+  const rows = instance.currentRows || [];
+  const sheetData = rows.map(r => ({
+    'Tract': r.tractId,
+    'Landowner': r.name,
+    'Status': r.status,
+    'Interest': r.interest != null ? r.interest : '',
+    'Gross Acres': r.gross != null ? r.gross : '',
+    'Net Acres': r.acres,
+    'Net Miles': r.miles,
+    'Assigned To': r.assigned,
+  }));
+  const ws = XLSX.utils.json_to_sheet(sheetData);
+  ws['!cols'] = [
+    { wch: 22 }, { wch: 40 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 11 }, { wch: 20 },
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'EPPS Line List');
+  const currWeek = (typeof history !== 'undefined' && history.length) ? history[history.length-1].date.replace(/\s+/g,'_') : 'export';
+  XLSX.writeFile(wb, `EPPS_Line_List_${currWeek}.xlsx`);
+}
 
 /* ---------------- Landowner Movement ---------------- */
 
