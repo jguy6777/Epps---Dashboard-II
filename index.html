@@ -1278,7 +1278,7 @@
 
   <div class="lo-panel" style="margin-bottom:20px;">
     <div class="iol-sync-row">
-      <button class="lo-export-btn" id="iolSyncBtn" type="button">⟳ Try Live Sync from SharePoint</button>
+      <button class="lo-export-btn" id="iolSyncBtn" type="button">⟳ Try Live Sync from Google Sheets</button>
       <span class="iol-sync-status" id="iolSyncStatus">Currently showing a static snapshot uploaded manually — not yet live.</span>
     </div>
     <div class="iol-sync-diagnostic" id="iolSyncDiagnostic" style="display:none;"></div>
@@ -2947,62 +2947,92 @@ const iolExportBtn = document.getElementById('iolExportBtn');
 if(iolExportBtn) iolExportBtn.addEventListener('click', exportIolToXlsx);
 
 /* ---------------- IOL live-sync experiment ----------------
-   Attempts to fetch the tracking spreadsheet directly from SharePoint and parse it
-   client-side, so the tab could eventually update without a manual re-upload. This is
-   diagnostic: it reports exactly what happened (network/CORS failure vs. wrong content
-   type vs. a real parse) rather than failing silently, since the whole point right now is
-   to find out which of those we're dealing with. If it fails, the existing static data
-   (from the last uploaded file) stays exactly as it is — nothing is lost either way. */
-const IOL_SHAREPOINT_URL = 'https://schoeffler-my.sharepoint.com/:x:/r/personal/jguy_segland_com/_layouts/15/Doc.aspx?sourcedoc=%7BF58A2C6E-9029-452B-B302-B6E10826FB9B%7D&file=ETC%20-%20EPPS%20-%20Line%20List%20-%20Master.xlsx&action=default&mobileredirect=true';
+   Attempts to fetch the tracking spreadsheet directly from its public Google Sheets link
+   and parse it client-side, so the tab could eventually update without a manual re-upload.
+   This is diagnostic: it reports exactly what happened (network/CORS failure vs. wrong
+   content vs. a real parse) rather than failing silently. If it fails, the existing static
+   data (from the last uploaded file) stays exactly as it is — nothing is lost either way.
+   Google's CSV export endpoint is used rather than the xlsx export, since CSV needs no
+   binary parsing library and is the simplest, most reliable way to read a public sheet
+   from client-side JS. NOTE: this sheet is reachable with no login of any kind — its
+   sharing is effectively public, which is what makes a live fetch possible at all, unlike
+   the SharePoint file. */
+const IOL_SHEET_ID = '1-SLro9ztN9ibrFw_5CXSpEP0Ja8_F_LOFGZekHQEs30';
+const IOL_LIVE_SOURCE_URL = `https://docs.google.com/spreadsheets/d/${IOL_SHEET_ID}/export?format=csv`;
 
 function iolStr(v){
-  if(v == null) return '';
-  if(typeof v === 'object'){
-    if(v.richText) return v.richText.map(t=>t.text).join('');
-    if(v.result != null) return String(v.result);
-    if(v.text != null) return String(v.text);
-  }
-  return String(v);
+  return v == null ? '' : String(v);
 }
 function iolNorm(v){
   const s = iolStr(v).trim();
   return s ? s.toUpperCase().replace(/\s+/g,' ') : s;
 }
 function iolNum(v){
-  if(typeof v === 'number') return Math.round(v*100)/100;
-  if(v && typeof v === 'object' && typeof v.result === 'number') return Math.round(v.result*100)/100;
-  const s = iolStr(v).trim();
+  const s = iolStr(v).trim().replace(/[$,]/g,'');
+  if(s === '' || s === '-') return 0;
   const n = parseFloat(s);
   return isNaN(n) ? 0 : Math.round(n*100)/100;
 }
 function iolDateOrNote(v){
-  if(v instanceof Date){
-    return v.toISOString().slice(0,10);
+  const s = iolStr(v).trim();
+  if(!s) return '';
+  // Google's CSV export writes dates as plain M/D/YYYY text — normalize to YYYY-MM-DD;
+  // anything that doesn't parse as a date (e.g. "Do Not Mail") passes through as typed.
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){
+    const [, mo, d, y] = m;
+    return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
   }
-  return iolNorm(v);
+  return iolNorm(s);
 }
 
-function parseIolWorksheetToRows(ws){
-  const headerRow = ws.getRow(1);
+/* Minimal RFC-4180-style CSV parser: handles quoted fields, embedded commas, embedded
+   newlines inside quotes, and doubled "" as an escaped quote — all of which show up in
+   this sheet (addresses and multi-line notes). */
+function parseCsv(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c === '"' && next === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else { field += c; }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+      else { field += c; }
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+function parseIolCsvToRows(csvText){
+  const table = parseCsv(csvText);
+  if(!table.length) throw new Error('CSV parsed to zero rows — the export may have returned an empty sheet.');
+  const headers = table[0].map(h => h.trim());
   const headerIndex = {};
-  headerRow.eachCell((cell, colNumber) => { headerIndex[iolStr(cell.value).trim()] = colNumber; });
+  headers.forEach((h, i) => { headerIndex[h] = i; });
 
   const need = ['TractID','Landowner','Address','City','State','Zip','TractCounty','Merge/Mailed Date','Broker',
     'Interest','Acres','Net Acres','Net Footage','Net Rods','Pipe Cost (500/rod)','IW Well Count',
     'IW Well Cost (1000/well)','OBS/DIS Well Count','OBS/DIS Well Cost (500/well)','Recitfier Site (Y/N)',
     'Recitfier Site Cost (500/site)','Surface Site Cost (2000/acre)','Bonus Payment (1000/acre)',
     'Infrastructure Total Cost','Total Cost'];
-  const missing = need.filter(h => !headerIndex[h]);
+  const missing = need.filter(h => !(h in headerIndex));
   if(missing.length){
-    throw new Error(`Worksheet is missing expected column(s): ${missing.join(', ')}. The sheet's structure may have changed since this dashboard was last built.`);
+    throw new Error(`CSV is missing expected column(s): ${missing.join(', ')}. The sheet's structure may have changed since this dashboard was last built.`);
   }
 
   const rows = [];
-  ws.eachRow((row, rowNumber) => {
-    if(rowNumber === 1) return;
-    const get = (h) => row.getCell(headerIndex[h]).value;
+  for(let r = 1; r < table.length; r++){
+    const line = table[r];
+    const get = (h) => line[headerIndex[h]];
     const tractId = iolStr(get('TractID')).trim();
-    if(!tractId) return;
+    if(!tractId) continue;
     rows.push({
       tractId,
       landowner: iolNorm(get('Landowner')),
@@ -3030,7 +3060,7 @@ function parseIolWorksheetToRows(ws){
       infraTotalCost: iolNum(get('Infrastructure Total Cost')),
       totalCost: iolNum(get('Total Cost')),
     });
-  });
+  }
   return rows;
 }
 
@@ -3046,14 +3076,15 @@ async function tryIolLiveSync(){
     diagEl.style.display = 'block';
     diagEl.textContent = lines.join('\n');
   };
+  const resetBtn = () => { if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from Google Sheets'; } };
 
   if(btn){ btn.disabled = true; btn.textContent = 'Trying…'; }
-  setStatus('Attempting to fetch the live file from SharePoint…');
-  const diag = [`URL: ${IOL_SHAREPOINT_URL}`, `Attempted: ${new Date().toString()}`];
+  setStatus('Attempting to fetch the live sheet from Google…');
+  const diag = [`URL: ${IOL_LIVE_SOURCE_URL}`, `Attempted: ${new Date().toString()}`];
 
   let resp;
   try {
-    resp = await fetch(IOL_SHAREPOINT_URL, { mode: 'cors', credentials: 'include' });
+    resp = await fetch(IOL_LIVE_SOURCE_URL, { mode: 'cors' });
   } catch(err){
     diag.push(`Fetch threw an error before getting any response: ${err.name}: ${err.message}`,
       'This is almost always a CORS block or a network-level failure — check this browser\'s',
@@ -3061,7 +3092,7 @@ async function tryIolLiveSync(){
       'reason from JavaScript for security reasons but print it to the console.');
     setStatus('Live sync failed — see details below.', 'err');
     showDiag(diag);
-    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    resetBtn();
     return;
   }
 
@@ -3070,51 +3101,45 @@ async function tryIolLiveSync(){
     `Response URL (after redirects): ${resp.url}`);
 
   if(!resp.ok){
-    diag.push('The request reached SharePoint but was rejected — status above is not 2xx.',
-      'A 401/403 usually means this link needs you to be logged into SharePoint in this same',
-      'browser; a redirect to a login page often shows as 200 with an HTML content-type below',
-      'rather than a clean 401, so check the Content-Type line too.');
+    diag.push('The request reached Google but was rejected — status above is not 2xx.',
+      'A redirect to a Google login page usually shows as a 200 with an HTML content-type',
+      'below rather than a clean 401/403, so check the Content-Type line too.');
     setStatus('Live sync failed — see details below.', 'err');
     showDiag(diag);
-    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    resetBtn();
     return;
   }
 
-  const buffer = await resp.arrayBuffer();
-  const bytes = new Uint8Array(buffer.slice(0, 4));
-  const isZipSignature = bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK" — real .xlsx files are zip archives
-  diag.push(`Response size: ${buffer.byteLength.toLocaleString()} bytes`,
-    `First bytes look like: ${isZipSignature ? 'a real Office/zip file (good sign)' : 'NOT a zip file — likely an HTML viewer page or login redirect, not the actual spreadsheet'}`);
+  const csvText = await resp.text();
+  const looksLikeHtml = /^\s*<(!DOCTYPE|html)/i.test(csvText);
+  diag.push(`Response size: ${csvText.length.toLocaleString()} characters`,
+    `First 80 chars: ${JSON.stringify(csvText.slice(0,80))}`);
 
-  if(!isZipSignature){
-    diag.push('This means the URL returned a webpage instead of the spreadsheet itself — the',
-      'link shape (a "view in browser" link) is the likely cause, not a permissions problem.',
-      'A true direct-download link is needed for this to work.');
-    setStatus('Live sync failed — got a webpage instead of the file. See details below.', 'err');
+  if(looksLikeHtml){
+    diag.push('This looks like an HTML page, not CSV data — likely a Google sign-in redirect',
+      'or a "request access" page, meaning the sheet isn\'t actually reachable without login',
+      'from this browser/account after all.');
+    setStatus('Live sync failed — got a webpage instead of data. See details below.', 'err');
     showDiag(diag);
-    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    resetBtn();
     return;
   }
 
   try {
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(buffer);
-    const ws = wb.getWorksheet('ETC_EPPS_DataImport_All');
-    if(!ws) throw new Error(`File loaded, but no worksheet named "ETC_EPPS_DataImport_All" was found. Sheets present: ${wb.worksheets.map(w=>w.name).join(', ')}`);
-    const rows = parseIolWorksheetToRows(ws);
-    if(!rows.length) throw new Error('File and worksheet loaded, but zero data rows were found — check the sheet name and layout still match.');
+    const rows = parseIolCsvToRows(csvText);
+    if(!rows.length) throw new Error('CSV loaded, but zero data rows were found — check the sheet name and layout still match.');
 
     iolTracking = rows;
     renderIolTable();
-    diag.push(`Successfully parsed ${rows.length} rows from the live file.`);
-    setStatus(`Live sync succeeded — showing ${rows.length} rows fetched just now from SharePoint.`, 'ok');
+    diag.push(`Successfully parsed ${rows.length} rows from the live sheet.`);
+    setStatus(`Live sync succeeded — showing ${rows.length} rows fetched just now from Google Sheets.`, 'ok');
     showDiag(diag);
   } catch(err){
-    diag.push(`Got real file bytes, but parsing failed: ${err.message}`);
-    setStatus('Live sync failed while parsing the file — see details below.', 'err');
+    diag.push(`Got a CSV response, but parsing failed: ${err.message}`);
+    setStatus('Live sync failed while parsing the data — see details below.', 'err');
     showDiag(diag);
   } finally {
-    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    resetBtn();
   }
 }
 const iolSyncBtn = document.getElementById('iolSyncBtn');
