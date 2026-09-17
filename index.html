@@ -2263,18 +2263,18 @@ async function exportLineListToXlsx(){
     const ws = wb.addWorksheet('EPPS Line List', { views: [{ state: 'frozen', ySplit: 1 }] });
 
     const columns = [
-      { header: 'Tract',            key: 'tractId',    width: 22 },
-      { header: 'Landowner',        key: 'landowner',  width: 40 },
-      { header: 'County',           key: 'county',     width: 14 },
-      { header: 'Landowner Status', key: 'loStatus',   width: 16 },
-      { header: 'Tract Status',     key: 'trStatus',   width: 18 },
-      { header: 'Interest',         key: 'interest',   width: 11 },
-      { header: 'Gross Acres',      key: 'gross',      width: 13 },
-      { header: 'Net Acres',        key: 'acres',      width: 12 },
-      { header: 'Infra?',           key: 'infra',      width: 9  },
-      { header: 'Infra Gross $',    key: 'infraGross', width: 15 },
-      { header: 'Infra Net $',      key: 'infraNet',   width: 14 },
-      { header: 'Assigned To',      key: 'assigned',   width: 20 },
+      { header: 'Tract',                   key: 'tractId',    width: 22 },
+      { header: 'Landowner',                key: 'landowner',  width: 40 },
+      { header: 'County',                   key: 'county',     width: 14 },
+      { header: 'Landowner Status',         key: 'loStatus',   width: 16 },
+      { header: 'Tract Status',             key: 'trStatus',   width: 18 },
+      { header: 'Interest',                 key: 'interest',   width: 11 },
+      { header: 'Gross Acres',              key: 'gross',      width: 13 },
+      { header: 'Net Acres',                key: 'acres',      width: 12 },
+      { header: 'Infrastructure (Y/N)',     key: 'infra',      width: 18 },
+      { header: 'Infrastructure Gross $',   key: 'infraGross', width: 20 },
+      { header: 'Infrastructure Net $',     key: 'infraNet',   width: 19 },
+      { header: 'Assigned To',              key: 'assigned',   width: 20 },
     ];
     columns.forEach((c, i) => { ws.getColumn(i+1).width = c.width; });
 
@@ -2292,16 +2292,17 @@ async function exportLineListToXlsx(){
       rows: lineListCurrentRows.map(r => columns.map(c => r[c.key])),
     });
 
-    // Center every cell and add visible gridlines (thin borders on all four sides), since
-    // the Excel Table style alone only colors rows — it doesn't add borders or alignment.
+    // Center every cell, set Calibri 10pt throughout, and add solid black gridlines, since
+    // the Excel Table style alone only colors rows — it doesn't set font or borders.
     const lastRow = lineListCurrentRows.length + 1;
-    const thinBorder = { style: 'thin', color: { argb: 'FFB7C3D1' } };
+    const blackBorder = { style: 'thin', color: { argb: 'FF000000' } };
     for(let r = 1; r <= lastRow; r++){
       const row = ws.getRow(r);
       for(let c = 1; c <= columns.length; c++){
         const cell = row.getCell(c);
         cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+        cell.border = { top: blackBorder, left: blackBorder, bottom: blackBorder, right: blackBorder };
+        cell.font = { name: 'Calibri', size: 10, bold: r === 1 };
       }
     }
     ws.views = [{ state: 'frozen', ySplit: 1, showGridLines: true }];
