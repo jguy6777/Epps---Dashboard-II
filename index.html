@@ -2806,7 +2806,7 @@ function renderIolTable(){
         <td>${r.zip}</td>
         <td>${r.county}</td>
         <td><span class="lo-status-chip" style="background:${statusColor(r.status)}">${r.status}</span></td>
-        <td>${r.mailedDate}</td>
+        <td>${iolFormatMailedDate(r.mailedDate)}</td>
         <td>${r.interest != null ? r.interest.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:6}) : '—'}</td>
         <td>${r.acres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
         <td>${r.netAcres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
@@ -2891,7 +2891,7 @@ async function exportIolToXlsx(){
       totalsRow: false,
       style: { theme: 'TableStyleMedium16', showRowStripes: true },
       columns: columns.map(c => ({ name: c.header })),
-      rows: iolCurrentRows.map(r => columns.map(c => r[c.key])),
+      rows: iolCurrentRows.map(r => columns.map(c => c.key === 'mailedDate' ? iolFormatMailedDate(r.mailedDate) : r[c.key])),
     });
 
     const lastRow = iolCurrentRows.length + 1;
@@ -2984,6 +2984,13 @@ function iolDateOrNote(v){
     return `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
   }
   return iolNorm(s);
+}
+/* Dates are stored internally as YYYY-MM-DD (sorts correctly as plain text); this converts
+   to MM/DD/YYYY for display and export. Non-date values (e.g. "DO NOT MAIL") pass through
+   unchanged either way. */
+function iolFormatMailedDate(s){
+  const m = iolStr(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iolStr(s);
 }
 
 /* Minimal RFC-4180-style CSV parser: handles quoted fields, embedded commas, embedded
@@ -3080,6 +3087,7 @@ async function tryIolLiveSync(){
 
   if(btn){ btn.disabled = true; btn.textContent = 'Trying…'; }
   setStatus('Attempting to fetch the live sheet from Google…');
+  diagEl.style.display = 'none';
   const diag = [`URL: ${IOL_LIVE_SOURCE_URL}`, `Attempted: ${new Date().toString()}`];
 
   let resp;
@@ -3131,9 +3139,8 @@ async function tryIolLiveSync(){
 
     iolTracking = rows;
     renderIolTable();
-    diag.push(`Successfully parsed ${rows.length} rows from the live sheet.`);
-    setStatus(`Live sync succeeded — showing ${rows.length} rows fetched just now from Google Sheets.`, 'ok');
-    showDiag(diag);
+    setStatus(`Live sync succeeded — showing ${rows.length} rows fetched just now from Google Sheets, last updated ${new Date().toLocaleString()}.`, 'ok');
+    diagEl.style.display = 'none';
   } catch(err){
     diag.push(`Got a CSV response, but parsing failed: ${err.message}`);
     setStatus('Live sync failed while parsing the data — see details below.', 'err');
