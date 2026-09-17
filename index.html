@@ -1278,7 +1278,7 @@
 
   <div class="lo-panel" style="margin-bottom:20px;">
     <div class="iol-sync-row">
-      <button class="lo-export-btn" id="iolSyncBtn" type="button">⟳ Try Live Sync from Google Sheets</button>
+      <button class="lo-export-btn" id="iolSyncBtn" type="button">⟳ Live Sync</button>
       <span class="iol-sync-status" id="iolSyncStatus">Currently showing a static snapshot uploaded manually — not yet live.</span>
     </div>
     <div class="iol-sync-diagnostic" id="iolSyncDiagnostic" style="display:none;"></div>
@@ -3083,7 +3083,7 @@ async function tryIolLiveSync(){
     diagEl.style.display = 'block';
     diagEl.textContent = lines.join('\n');
   };
-  const resetBtn = () => { if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from Google Sheets'; } };
+  const resetBtn = () => { if(btn){ btn.disabled = false; btn.textContent = '⟳ Live Sync'; } };
 
   if(btn){ btn.disabled = true; btn.textContent = 'Trying…'; }
   setStatus('Attempting to fetch the live sheet from Google…');
