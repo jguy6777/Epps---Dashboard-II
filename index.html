@@ -530,6 +530,9 @@
     white-space:nowrap;
   }
   table.lo-table td.lo-name{ color:var(--text-hi); font-weight:500; white-space:normal; }
+  /* IOL Tracking has 26 columns, so the browser squeezes width wherever it can — pin the
+     Landowner column wide enough that names stop wrapping onto multiple lines. */
+  #iolTable td.lo-name{ white-space:nowrap; min-width:280px; }
   table.lo-table td.lo-tract-id{ font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--text-mid); white-space:nowrap; }
   table.lo-table tr:last-child td{ border-bottom:none; }
   table.lo-table tr:hover td{ background: rgba(76,141,255,0.06); }
