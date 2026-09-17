@@ -2329,16 +2329,21 @@ async function buildLineListWorkbookAndDownload(btnId, includeNotes){
       rows: dataRows,
     });
 
-    // Center every cell, set Calibri 10pt throughout, and add solid black gridlines —
-    // identical formatting to the plain export, including the Notes column, so both files
-    // look like the same table with one extra column rather than two different styles.
+    // Center every cell vertically and horizontally, Calibri 10pt, solid black gridlines —
+    // except the Notes column's data cells, which are left-aligned and wrap (still centered
+    // vertically), since long free-form sentences read poorly centered horizontally. The
+    // Notes header cell stays centered like every other header, for a consistent header row.
     const lastRow = lineListCurrentRows.length + 1;
+    const notesColIndex = includeNotes ? columns.length : -1;
     const blackBorder = { style: 'thin', color: { argb: 'FF000000' } };
     for(let r = 1; r <= lastRow; r++){
       const row = ws.getRow(r);
       for(let c = 1; c <= columns.length; c++){
         const cell = row.getCell(c);
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        const isNotesData = (c === notesColIndex && r > 1);
+        cell.alignment = isNotesData
+          ? { horizontal: 'left', vertical: 'middle', wrapText: true }
+          : { horizontal: 'center', vertical: 'middle' };
         cell.border = { top: blackBorder, left: blackBorder, bottom: blackBorder, right: blackBorder };
         cell.font = { name: 'Calibri', size: 10, bold: r === 1 };
       }
