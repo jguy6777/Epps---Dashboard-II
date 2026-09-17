@@ -28,7 +28,7 @@
     --flat: #6b7a91;
     --prev: #5f7291;
   }
-  .card, .gauge-panel, .compare, .money-panel, .mstat, .featured, .move-stat, .transition-panel, .move-sublist{
+  .card, .gauge-panel, .compare, .money-panel, .mstat, .featured, .move-stat, .move-sublist{
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
@@ -354,26 +354,6 @@
   .move-stat .mvlbl{ font-size:10px; color:var(--text-lo); text-transform:uppercase; letter-spacing:.06em; margin-top:4px; }
   .move-stat.hl .mvnum{ color: var(--blue-pale); }
 
-  .transition-panel{
-    background: var(--panel);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:20px 22px;
-    margin-bottom:20px;
-  }
-  .transition-panel h3{ font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin-bottom:14px;}
-  .transition-row{ display:flex; align-items:center; gap:14px; padding:10px 0; border-bottom:1px solid var(--border-soft); }
-  .transition-row:last-child{ border-bottom:none; }
-  .transition-count{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; width:34px; text-align:center; padding:4px 0; border-radius:6px; }
-  .transition-count.fwd{ background: rgba(76,141,255,0.16); color: var(--blue-pale); }
-  .transition-count.back{ background: rgba(217,128,140,0.16); color: var(--down); }
-  .transition-path{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color: var(--text-mid); flex:1; }
-  .transition-path b{ color: var(--text-hi); font-weight:600; }
-  .transition-arrow{ color: var(--text-lo); margin:0 6px; }
-  .transition-tag{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; padding:3px 8px; border-radius:999px; }
-  .transition-tag.fwd{ background: rgba(76,141,255,0.12); color: var(--blue-pale); }
-  .transition-tag.back{ background: rgba(217,128,140,0.12); color: var(--down); }
-
   .move-sublists{ display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
   @media (max-width: 700px){ .move-sublists{ grid-template-columns: 1fr; } }
   .move-sublist{ background: var(--panel); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
@@ -420,6 +400,19 @@
     padding:20px 22px;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+  }
+  .iol-embed-panel{
+    background: var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px;
+    margin-bottom:16px;
+    overflow:hidden;
+  }
+  .iol-embed-panel iframe{
+    display:block;
+    border-radius:8px;
+    background:#fff;
   }
   .lo-filter-row{
     display:flex;
@@ -696,9 +689,11 @@
   #tab-radio-dashboard:checked ~ #tabPanel-dashboard{ display:block; }
   #tab-radio-money:checked ~ #tabPanel-money{ display:block; }
   #tab-radio-tracts:checked ~ #tabPanel-tracts{ display:block; }
+  #tab-radio-tracking:checked ~ #tabPanel-tracking{ display:block; }
   #tab-radio-dashboard:checked ~ .tab-bar label[for="tab-radio-dashboard"],
   #tab-radio-money:checked ~ .tab-bar label[for="tab-radio-money"],
-  #tab-radio-tracts:checked ~ .tab-bar label[for="tab-radio-tracts"]{
+  #tab-radio-tracts:checked ~ .tab-bar label[for="tab-radio-tracts"],
+  #tab-radio-tracking:checked ~ .tab-bar label[for="tab-radio-tracking"]{
     background: var(--blue-soft);
     color: #eaf1fb;
     box-shadow: 0 0 0 1px var(--blue) inset;
@@ -782,11 +777,13 @@
   <input type="radio" name="epps-tab" id="tab-radio-dashboard" class="tab-radio" checked>
   <input type="radio" name="epps-tab" id="tab-radio-money" class="tab-radio">
   <input type="radio" name="epps-tab" id="tab-radio-tracts" class="tab-radio">
+  <input type="radio" name="epps-tab" id="tab-radio-tracking" class="tab-radio">
 
   <nav class="tab-bar" id="tabBar">
     <label class="tab-btn" for="tab-radio-dashboard">Acquisition Summary</label>
     <label class="tab-btn" for="tab-radio-money">Brokerage &amp; Bonus</label>
     <label class="tab-btn" for="tab-radio-tracts">EPPS Line List</label>
+    <label class="tab-btn" for="tab-radio-tracking">IOL Tracking</label>
   </nav>
 
 <div class="tab-panel" id="tabPanel-dashboard">
@@ -925,47 +922,6 @@
   <div class="featured" style="margin-bottom:20px;" id="mvLargestShift"></div>
 
   <div class="featured" style="margin-bottom:20px;" id="mvBackwardCallout"></div>
-
-  <div class="transition-panel">
-    <h3>All Status Transitions</h3>
-    <div id="transitionRows">
-  <div class="transition-row">
-    <div class="transition-count fwd">20</div>
-    <div class="transition-path"><b>DELIVERED</b><span class="transition-arrow">→</span><b>NEGOTIATING</b></div>
-    <div class="transition-tag fwd">Forward</div>
-  </div>
-
-  <div class="transition-row">
-    <div class="transition-count fwd">3</div>
-    <div class="transition-path"><b>MAILED</b><span class="transition-arrow">→</span><b>DELIVERED</b></div>
-    <div class="transition-tag fwd">Forward</div>
-  </div>
-
-  <div class="transition-row">
-    <div class="transition-count fwd">2</div>
-    <div class="transition-path"><b>MAILED</b><span class="transition-arrow">→</span><b>NEGOTIATING</b></div>
-    <div class="transition-tag fwd">Forward</div>
-  </div>
-
-  <div class="transition-row">
-    <div class="transition-count fwd">1</div>
-    <div class="transition-path"><b>DELIVERED</b><span class="transition-arrow">→</span><b>ACQUIRED</b></div>
-    <div class="transition-tag fwd">Forward</div>
-  </div>
-
-  <div class="transition-row">
-    <div class="transition-count fwd">1</div>
-    <div class="transition-path"><b>NEGOTIATING</b><span class="transition-arrow">→</span><b>ACQUIRED</b></div>
-    <div class="transition-tag fwd">Forward</div>
-  </div>
-
-  <div class="transition-row">
-    <div class="transition-count back">1</div>
-    <div class="transition-path"><b>DELIVERED</b><span class="transition-arrow">→</span><b>MAILED</b></div>
-    <div class="transition-tag back">Backward</div>
-  </div>
-</div>
-  </div>
 
   <div class="move-sublists">
     <div class="move-sublist">
@@ -1299,6 +1255,23 @@
     <div class="lo-note">Source: the Mapper Export's own "Line List" tab (Sep 16, 2026) — one row per owner-tract combination (243 rows, same cardinality as Raw Data). Landowner Status is that owner's own progress; Tract Status is the tract's rolled-up status across all its co-owners and can read PARTIALLY ACQUIRED when co-owners are at different stages. Filter pills below use Tract Status and are independent of the rest of this dashboard.</div>
   </div>
   </div><!-- /tabPanel-tracts -->
+
+  <div id="tabPanel-tracking" class="tab-panel">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">IOL · Live Tracking Sheet</div>
+      <h2>IOL Tracking</h2>
+      <p>Embedded directly from the OneDrive/SharePoint spreadsheet — always shows the live sheet, no re-upload needed when it changes</p>
+    </div>
+  </div>
+  <div class="iol-embed-panel">
+    <iframe
+      src="https://schoeffler-my.sharepoint.com/personal/jguy_segland_com/_layouts/15/Doc.aspx?sourcedoc={f58a2c6e-9029-452b-b302-b6e10826fb9b}&action=embedview&wdAllowInteractivity=False&wdHideGridlines=True&wdHideHeaders=True&wdDownloadButton=True&wdInConfigurator=True&wdInConfigurator=True"
+      width="100%" height="900" frameborder="0" scrolling="yes"
+      title="IOL Tracking Spreadsheet"></iframe>
+  </div>
+  <div class="lo-note">This is a live embed of the actual spreadsheet on SharePoint — updates made to the sheet appear here automatically. Access follows whatever sharing permissions are set on the file itself; if a viewer can't see it, check the file's sharing settings in SharePoint/OneDrive rather than anything on this dashboard.</div>
+  </div><!-- /tabPanel-tracking -->
 
   <!-- Shared tract detail modal — lives outside every tab panel (not nested in any
        .tab-panel) so it renders correctly no matter which tab is currently active.
@@ -2543,14 +2516,6 @@ const newLandowners = [
 const droppedLandowners = [
 
 ];;
-
-document.getElementById('transitionRows').innerHTML = transitions.map(t=>`
-  <div class="transition-row">
-    <div class="transition-count ${t.dir}">${t.count}</div>
-    <div class="transition-path"><b>${t.from}</b><span class="transition-arrow">→</span><b>${t.to}</b></div>
-    <div class="transition-tag ${t.dir}">${t.dir==='fwd' ? 'Forward' : 'Backward'}</div>
-  </div>
-`).join('');
 
 document.getElementById('movementHeader').textContent =
   `Landowner Movement — ${history[history.length-2].date} → ${history[history.length-1].date}`;
