@@ -484,13 +484,25 @@
   .lo-export-btn:hover{ color:var(--text-hi); border-color:var(--blue-soft); background: var(--panel); }
   .lo-export-btn:disabled{ opacity:0.5; cursor:default; }
   .lo-table-wrap{ overflow-x:auto; overflow-y:auto; max-height:720px; }
+  /* No overflow set here on purpose: setting even overflow-x:auto would force the browser
+     to also compute overflow-y as auto (a real CSS rule — one non-visible axis pulls the
+     other out of 'visible' too), which turns this box into its own scroll container. That
+     silently hijacks position:sticky below to stick relative to THIS box instead of the
+     actual page, which is what caused the header to render at the wrong offset and overlap
+     the rows under it. Leaving overflow unset keeps this in normal page flow. */
   table.lo-table thead th{
     position: sticky;
     top: 0;
-    background: var(--panel);
+    /* Solid, fully opaque — var(--panel) is translucent (rgba alpha 0.74), which is fine
+       for a panel that sits still, but a STICKY header needs to fully hide the rows that
+       scroll underneath it, or their text shows through and overlaps (ghosting). */
+    background: #121a2c;
     z-index: 1;
   }
-  table.lo-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  /* border-collapse: collapse is a known cause of sticky thead/th failing to actually
+     stick in Chrome and Firefox — switching to separate (with zero spacing, so the layout
+     looks identical) is what makes the frozen header below actually take effect. */
+  table.lo-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:12.5px; }
   table.lo-table th{
     text-align:left;
     font-size:10.5px;
@@ -2215,7 +2227,7 @@ function renderLineListTable(){
   } else {
     empty.style.display = 'none';
     tbody.innerHTML = rows.map(r => `
-      <tr>
+      <tr data-name="${r.landowner.replace(/"/g,'&quot;')}" data-tract="${String(r.tractId).replace(/"/g,'&quot;')}">
         <td class="lo-tract-id">${r.tractId}</td>
         <td class="lo-name">${r.landowner}</td>
         <td>${r.county}</td>
@@ -2230,6 +2242,9 @@ function renderLineListTable(){
         <td>${r.assigned}</td>
       </tr>
     `).join('');
+    tbody.querySelectorAll('tr[data-name]').forEach(tr=>{
+      tr.addEventListener('click', ()=> openLandownerModal(tr.getAttribute('data-name'), tr.getAttribute('data-tract')));
+    });
   }
 
   document.querySelectorAll('#loTable2 th[data-sort]').forEach(th=>{
