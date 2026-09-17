@@ -2292,6 +2292,20 @@ async function exportLineListToXlsx(){
       rows: lineListCurrentRows.map(r => columns.map(c => r[c.key])),
     });
 
+    // Center every cell and add visible gridlines (thin borders on all four sides), since
+    // the Excel Table style alone only colors rows — it doesn't add borders or alignment.
+    const lastRow = lineListCurrentRows.length + 1;
+    const thinBorder = { style: 'thin', color: { argb: 'FFB7C3D1' } };
+    for(let r = 1; r <= lastRow; r++){
+      const row = ws.getRow(r);
+      for(let c = 1; c <= columns.length; c++){
+        const cell = row.getCell(c);
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+      }
+    }
+    ws.views = [{ state: 'frozen', ySplit: 1, showGridLines: true }];
+
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
