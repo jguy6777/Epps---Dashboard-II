@@ -728,7 +728,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
-  <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
 
@@ -1235,9 +1235,9 @@
   <div id="tabPanel-tracts" class="tab-panel">
   <div class="section-head">
     <div>
-      <div class="eyebrow">EPPS · Raw Data</div>
+      <div class="eyebrow">EPPS · Line List</div>
       <h2>EPPS Line List</h2>
-      <p>All 243 tracts as of Sep 16, 2026 — one row per tract, searchable by landowner or tract ID, filterable by status</p>
+      <p>All 243 owner-tract rows from the Mapper Export's Line List tab (Sep 16, 2026) — searchable by landowner or tract ID, filterable by tract status</p>
     </div>
   </div>
 
@@ -1254,13 +1254,17 @@
       <table class="lo-table" id="loTable2">
         <thead>
           <tr>
-            <th data-sort="tractId" class="active">Tract<span class="arrow">▲</span></th>
-            <th data-sort="name">Landowner<span class="arrow"></span></th>
-            <th data-sort="status">Status<span class="arrow"></span></th>
+            <th data-sort="tractId">Tract<span class="arrow"></span></th>
+            <th data-sort="landowner">Landowner<span class="arrow"></span></th>
+            <th data-sort="county">County<span class="arrow"></span></th>
+            <th data-sort="loStatus">Landowner Status<span class="arrow"></span></th>
+            <th data-sort="trStatus" class="active">Tract Status<span class="arrow">▲</span></th>
             <th data-sort="interest">Interest<span class="arrow"></span></th>
             <th data-sort="gross">Gross Acres<span class="arrow"></span></th>
             <th data-sort="acres">Net Acres<span class="arrow"></span></th>
-            <th data-sort="miles">Net Miles<span class="arrow"></span></th>
+            <th data-sort="infra">Infra?<span class="arrow"></span></th>
+            <th data-sort="infraGross">Infra Gross $<span class="arrow"></span></th>
+            <th data-sort="infraNet">Infra Net $<span class="arrow"></span></th>
             <th data-sort="assigned">Assigned To<span class="arrow"></span></th>
           </tr>
         </thead>
@@ -1274,9 +1278,9 @@
       </tr>
     </tbody>
       </table>
-      <div class="lo-empty" id="loEmpty2" style="display:none;">No landowners match your search.</div>
+      <div class="lo-empty" id="loEmpty2" style="display:none;">No tracts match your search.</div>
     </div>
-    <div class="lo-note">One row per tract from the Raw Data tab (Sep 16, 2026) — 134 landowners across 243 tracts, joined to broker assignment and each landowner's most recent note from the Notes tab. No landowners with 0% recorded interest were present in this week's export. Click any row to see that tract's detail and the landowner's note.</div>
+    <div class="lo-note">Source: the Mapper Export's own "Line List" tab (Sep 16, 2026) — one row per owner-tract combination (243 rows, same cardinality as Raw Data). Landowner Status is that owner's own progress; Tract Status is the tract's rolled-up status across all its co-owners and can read PARTIALLY ACQUIRED when co-owners are at different stages. Filter pills below use Tract Status and are independent of the rest of this dashboard.</div>
   </div>
   </div><!-- /tabPanel-tracts -->
 
@@ -1414,7 +1418,8 @@ const STATUS_COLORS = {
   'DELIVERED':   '#38a800',
   'MAILED':      '#ffebaf',
   'LEGAL':       '#ffaa00',
-  'STATE LANDS': '#ff7f7f'
+  'STATE LANDS': '#ff7f7f',
+  'PARTIALLY ACQUIRED': '#c9a4ff'
 };
 function statusColor(name){ return STATUS_COLORS[name] || '#4c8dff'; }
 
@@ -1443,7 +1448,6 @@ function getSelected(){ return selected==='ALL' ? ALL_STATUS : data.find(x=>x.na
 function renderPills(){
   renderPillsInto('pillRow');
   renderPillsInto('loPillRow');
-  renderPillsInto('loPillRow2');
 }
 
 function renderPillsInto(containerId){
@@ -1812,12 +1816,265 @@ const landownerDetails = {
   "WEST MEATH, LLC":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E4-06","status":"NEGOTIATING","acres":51.5,"miles":0,"interest":1,"gross":51.5}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
   "WILLIAM H. AND DANA GAY PAYNE":{"broker":"SCOTT BROUSSARD","tracts":[{"id":"LA123-19N10E23-13","status":"NEGOTIATING","acres":1,"miles":0,"interest":1,"gross":1}],"lastNote":{"date":"Sep 2, 2026","text":"9/2/2026: sent email to Carroll letting him no there's been no appraisals done yet and that we are gathering the original agreements to send to him."}},
   "WILLIAM TERRY AND VICKI PRINE PILLARS":{"broker":"CRAIG PUGLIESE","tracts":[{"id":"LA123-19N10E10-04","status":"NEGOTIATING","acres":1,"miles":0,"interest":1,"gross":1}],"lastNote":{"date":"Aug 20, 2026","text":"Alvin went to the residence on 8/20/26 at 11:10am and met with Vicky. She told me that her brother, Russell Prine, will be negotiating for her, and will handle everything."}}
-};;
+};
+
+/* ---------------- EPPS Line List (from the Mapper Export's own "Line List" tab) ----------------
+   One row per owner-tract combination (243 rows, matching Raw Data's cardinality).
+   loStatus = that landowner's own status; trStatus = the tract's rolled-up status across
+   all its co-owners (can read PARTIALLY ACQUIRED when owners are at different stages —
+   loStatus alone never does). Independent of the Raw Data / landownerData model used
+   elsewhere in this dashboard — has its own status set and its own filter pills. */
+const eppsLineList = [
+{"tractId":"LA035-19N10E1-02","landowner":"RICKIE REESE AND KIMBERLY KIRKLAND ARLEDGE","county":"EAST CARROLL","assigned":"BOB DERISE","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":78.97,"acres":78.97,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E6-02","landowner":"RICKIE REESE AND KIMBERLY KIRKLAND ARLEDGE","county":"EAST CARROLL","assigned":"BOB DERISE","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":52.71,"acres":52.71,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-01","landowner":"LLOYD E. NEAL, INC.","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":22.71,"acres":22.71,"infra":"Y","infraGross":37640.62,"infraNet":37640.62},
+{"tractId":"LA123-19N10E15-03","landowner":"LLOYD E. NEAL, INC.","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":46.84,"acres":46.84,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E22-01","landowner":"LLOYD E. NEAL, INC.","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":168.6,"acres":168.6,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-01","landowner":"LLOYD E. NEAL, INC.","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":83.75,"acres":83.75,"infra":"Y","infraGross":58522.53,"infraNet":58522.53},
+{"tractId":"LA123-19N10E23-03","landowner":"LLOYD E. NEAL, INC.","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":98.06,"acres":98.06,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-12","landowner":"MARVIN DEAN LEATHERMAN","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":2.59,"acres":2.59,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-18","landowner":"JAMES PAUL AND THERESA HERMAN MORGAN","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":2,"acres":2,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E24-02","landowner":"JAMES KEITH RUSK","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":0.5,"gross":41.07,"acres":20.54,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E24-02","landowner":"JAIME LYNN RUSK","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":0.5,"gross":41.07,"acres":20.54,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E24-03","landowner":"JAMES PAUL AND THERESA HERMAN MORGAN","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"ACQUIRED","trStatus":"ACQUIRED","interest":1,"gross":4.1,"acres":4.1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"JOHN MITCHELL HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"ACQUIRED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"MARY ALICE HALE HAWKINS","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"ACQUIRED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"REBECCA HALE BROWN","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.018182,"gross":1,"acres":0.02,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"JEANETTE HALE CARROLL","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.018182,"gross":1,"acres":0.02,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"DAVID HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.018182,"gross":1,"acres":0.02,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"MICHAEL HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.018182,"gross":1,"acres":0.02,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"WALTER \"W.T.\" HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"ALFRED L. HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"MYRTLE HALE WELCH","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"MARIE HALE COBURN","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"AGNES HALE GORDON","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"TIMOTHY HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"PARTIALLY ACQUIRED","interest":0.018182,"gross":1,"acres":0.02,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"RUBY HALE LINECUM","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"DELLIE HALE SOUTHERN","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-14","landowner":"MILDRED HALE STANFIELD","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"PARTIALLY ACQUIRED","interest":0.090909,"gross":1,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E1-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":313.83,"acres":313.83,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E12-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":139.11,"acres":139.11,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E12-01-SS","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":0.54,"acres":0.54,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E12-02","landowner":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":105.64,"acres":105.64,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E13-01","landowner":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":184.36,"acres":184.36,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E24-01","landowner":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":35.0,"acres":35.0,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E24-04","landowner":"DAVES BAYOU LAND COMPANY, LLC","county":"EAST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":32,"acres":32,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E24-06","landowner":"FARMERS ONE STOP, INC.","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1.3,"acres":1.3,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E18-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":7.56,"acres":7.56,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E18-02","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.29,"gross":33.05,"acres":9.59,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E18-02","landowner":"DAVID R. ROBERTSON, II","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.355,"gross":33.05,"acres":11.73,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E18-02","landowner":"TABITHA A. ROBERTSON DURBIN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.355,"gross":33.05,"acres":11.73,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E5-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":101.16,"acres":101.16,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E5-02","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":15,"acres":15,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E6-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":581.31,"acres":581.31,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E6-03","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.29,"gross":70.69,"acres":20.5,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E6-03","landowner":"DAVID R. ROBERTSON, II","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.355,"gross":70.69,"acres":25.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E6-03","landowner":"TABITHA A. ROBERTSON DURBIN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.355,"gross":70.69,"acres":25.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":328.56,"acres":328.56,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-02","landowner":"NO MISTAKE PLANTATION, INC.","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":123.34,"acres":123.34,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-03","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.29,"gross":189.56,"acres":54.97,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-03","landowner":"DAVID R. ROBERTSON, II","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.355,"gross":189.56,"acres":67.3,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-03","landowner":"TABITHA A. ROBERTSON DURBIN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.355,"gross":189.56,"acres":67.3,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-04","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.29,"gross":13.88,"acres":4.03,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-04","landowner":"DAVID R. ROBERTSON, II","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.355,"gross":13.88,"acres":4.93,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E7-04","landowner":"TABITHA A. ROBERTSON DURBIN","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.355,"gross":13.88,"acres":4.93,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N11E8-01","landowner":"NO MISTAKE PLANTATION, INC.","county":"EAST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":166.55,"acres":166.55,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-01","landowner":"GLENNDELL FAMILY FARM CORPORATION","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":319,"acres":319,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-02","landowner":"GLENNDELL FAMILY FARM CORPORATION","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":34,"acres":34,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-02-SS","landowner":"GLENNDELL FAMILY FARM CORPORATION","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":9.76,"acres":9.76,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-04","landowner":"WILLIAM TERRY AND VICKI PRINE PILLARS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-05","landowner":"FRANK SCOTT MORAN","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":82.59,"acres":82.59,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-06","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":201.88,"acres":201.88,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-03","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":128.4,"acres":128.4,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-04","landowner":"STEVEN L. AND CHRISTIE HALE BROWN","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":70,"acres":70,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-05","landowner":"ADAM R. PLUNKETT","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":23,"acres":23,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-06","landowner":"FARMLAND RESERVE, INC.","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":20.71,"acres":20.71,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-07","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":20.77,"acres":20.77,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-08","landowner":"FREDERICK LAMAR AND NORA SHAY HALE","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":3,"acres":3,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-01","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":422.02,"acres":422.02,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-02","landowner":"COUNCILL INVESTMENTS GROUP, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":165.45,"acres":27.57,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-02","landowner":"HALE HOUNDS, INC.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":165.45,"acres":82.72,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-02","landowner":"MARTSON LAND AND MINERALS, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":165.45,"acres":27.57,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-02","landowner":"SWALLOW HARBOR, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":165.45,"acres":27.57,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-04","landowner":"GREGORY ALLAN AND KIMBERLY LYNN FORSSE","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":2.43,"acres":2.43,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E12-04","landowner":"COUNCILL INVESTMENTS GROUP, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":216.3,"acres":36.05,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E12-04","landowner":"HALE HOUNDS, INC.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":216.3,"acres":108.15,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E12-04","landowner":"MARTSON LAND AND MINERALS, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":216.3,"acres":36.05,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E12-04","landowner":"SWALLOW HARBOR, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":216.3,"acres":36.05,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E12-05","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":112.7,"acres":112.7,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-05","landowner":"STEPHEN PAUL RICE","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":3.86,"acres":3.86,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"ERIN KELLY KRAJEWSKI HARTZELL","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.022222,"gross":4,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"LAURA GENEVIEVE HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"LOIS ANNE HAWKINS KEITH","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"KATHERINE KELLY","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.022222,"gross":4,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"EDWIN ROY KELLY","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"FRANCIS STEPHEN KELLY, IV","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.022222,"gross":4,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"OLD PECAN RESOURCES, LLC","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"DEBORAH KELLY SLAUGHTER","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"MARY KELLY WEAR","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"JENNIFER MARIE HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"H. LLOYD AND LOIS HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.333333,"gross":4,"acres":1.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"DEBORAH ANNE HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-07","landowner":"HENRY LLOYD HAWKINS, III","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-03","landowner":"COUNCILL INVESTMENTS GROUP, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":215.0,"acres":35.83,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-03","landowner":"HALE HOUNDS, INC.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":215.0,"acres":107.5,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-03","landowner":"MARTSON LAND AND MINERALS, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":215.0,"acres":35.83,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-03","landowner":"SWALLOW HARBOR, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":215.0,"acres":35.83,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-05","landowner":"JASON L. HALE","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":32.8,"acres":32.8,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-06","landowner":"STEPHEN PAUL RICE","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":25.9,"acres":25.9,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"ERIN KELLY KRAJEWSKI HARTZELL","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.022222,"gross":4,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"LAURA GENEVIEVE HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"LOIS ANNE HAWKINS KEITH","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"KATHERINE KELLY","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.022222,"gross":4,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"EDWIN ROY KELLY","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"FRANCIS STEPHEN KELLY, IV","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.022222,"gross":4,"acres":0.09,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"OLD PECAN RESOURCES, LLC","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"DEBORAH KELLY SLAUGHTER","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"MARY KELLY WEAR","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"JENNIFER MARIE HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"H. LLOYD AND LOIS HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.333333,"gross":4,"acres":1.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"DEBORAH ANNE HAWKINS","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-08","landowner":"HENRY LLOYD HAWKINS, III","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.066667,"gross":4,"acres":0.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-01","landowner":"JEFFERY ALAN AND ELIZABETH RUSSELL SIMMONS","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":163.5,"acres":163.5,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-02","landowner":"PAUL C. GOWAN LAND TRUST","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":166.53,"acres":166.53,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-04","landowner":"STEPHEN PAUL RICE","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":15.24,"acres":15.24,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-05","landowner":"JASON L. HALE","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":43.2,"acres":43.2,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-06","landowner":"COUNCILL INVESTMENTS GROUP, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":203.53,"acres":33.92,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-06","landowner":"HALE HOUNDS, INC.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":203.53,"acres":101.77,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-06","landowner":"MARTSON LAND AND MINERALS, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":203.53,"acres":33.92,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E15-06","landowner":"SWALLOW HARBOR, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":203.53,"acres":33.92,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E16-01","landowner":"JEFFERY ALAN AND ELIZABETH RUSSELL SIMMONS","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":74.5,"acres":74.5,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E16-02","landowner":"PAUL C. GOWAN LAND TRUST","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":157.72,"acres":157.72,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E16-03","landowner":"HEZ NEWTON ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":80,"acres":80,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-02","landowner":"ADAM R. PLUNKETT","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":62,"acres":62,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-03","landowner":"JOHN WAYNE AND BONNIE HOLLEY GREGORY","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":65,"acres":65,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-05","landowner":"TOMMY W. AND TAMMY C. HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":39,"acres":39,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-06","landowner":"ROBERT ANDREW BRANDON HALE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":6,"acres":6,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-07","landowner":"FARMLAND RESERVE, INC.","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":117.29,"acres":117.29,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-08","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":99.23,"acres":99.23,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-09","landowner":"FREDERICK LAMAR AND NORA SHAY HALE","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":41,"acres":41,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-11","landowner":"JOHN SPENCER JOHNSTON","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":12,"acres":12,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-12","landowner":"TAMMY JOHNSTON","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":44,"acres":44,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-13","landowner":"JOHN SPENCER AND TAMMY HERRINGTON JOHNSTON","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":27,"acres":27,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-15","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":0.9,"acres":0.9,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E22-02","landowner":"DUCKMOSS, LLC","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":160,"acres":160,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E22-03","landowner":"CAROLYN Y. BISHOP, USUFRUCTARY","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":30,"acres":30,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E22-05","landowner":"SON OF DAVID INVESTMENTS, LLC","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-04","landowner":"DONDOROSA FARMS, LLC","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":102.53,"acres":51.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-04","landowner":"DONALD M. RALEY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":102.53,"acres":51.27,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-07","landowner":"ALLEN LAMAR AND MARIAN NORENE WALLER FREY","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":3,"acres":3,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-08","landowner":"WALNUT GROVE BAPTIST CHURCH","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1.56,"acres":1.56,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-09","landowner":"STEVEN L. AND CHRISTIE HALE BROWN","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":5.1,"acres":5.1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-10","landowner":"DAVID TODD MCVAY","county":"WEST CARROLL","assigned":"IAN MCCLELLAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":2.63,"acres":2.63,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-11","landowner":"JASON M. HUDSPETH","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-13","landowner":"WILLIAM H. AND DANA GAY PAYNE","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-14","landowner":"MARTY A. AND MELISSA B. SIMMS","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":9.12,"acres":9.12,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-15","landowner":"WALTER DAVID AND HELEN CORLEY MCVAY","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-16","landowner":"ADAM R. PLUNKETT","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":8.96,"acres":8.96,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-17","landowner":"RUSSELL AND CHERISH SIMMS MORRIS","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1.98,"acres":1.98,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-19","landowner":"MARTY A. AND MELISSA B. SIMMS","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1.03,"acres":1.03,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-22","landowner":"MARTY A. AND MELISSA B. SIMMS","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":14.26,"acres":14.26,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E25-01","landowner":"THE MACON CROSSING, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":47.21,"acres":47.21,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-01","landowner":"PAULA M. SKIPPER","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":76,"acres":76,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-02","landowner":"DONDOROSA FARMS, LLC","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":58.23,"acres":29.12,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-02","landowner":"DONALD M. RALEY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":58.23,"acres":29.12,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-04","landowner":"THE ARCHAEOLOGICAL CONSERVANCY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":3,"acres":3,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-05","landowner":"THE MACON CROSSING, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":47.21,"acres":47.21,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-06","landowner":"MARTY A. AND MELISSA B. SIMMS","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":5.46,"acres":5.46,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"REBECCA DOLES CHANEY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":250,"acres":41.67,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"HEZ NEWTON ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.111111,"gross":250,"acres":27.78,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"TOM WADE ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.055556,"gross":250,"acres":13.89,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"DEBORAH ANN DOLES RAMSEY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":250,"acres":41.67,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"REAGAN WEST CARROLL PROPERTIES, LLC","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.333333,"gross":250,"acres":83.33,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"CAROL ANN ELKINS CHRISMAN","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.018519,"gross":250,"acres":4.63,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"RICHARD DALE ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.018519,"gross":250,"acres":4.63,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"BOBBY STEPHEN ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.018519,"gross":250,"acres":4.63,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"BRUCE HANEY","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":250,"acres":6.94,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"CYNTHIA LYNN HANEY","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":250,"acres":6.94,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"JAMES ALAN MISENHEIMER","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":250,"acres":6.94,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-01","landowner":"PAULA MISENHEIMER SCHILDROTH","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":250,"acres":6.94,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-04","landowner":"VICKY PRINE PILLARS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":26.5,"acres":26.5,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-05","landowner":"LYDE WORTHINGTON RAWLS","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":40.83,"acres":40.83,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-07","landowner":"RUSSELL RAY AND RHONDA BROCK PRINE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":78,"acres":78,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-09","landowner":"RUSSELL RAY AND RHONDA BROCK PRINE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-10","landowner":"COUNCILL INVESTMENTS GROUP, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":79.71,"acres":13.29,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-10","landowner":"HALE HOUNDS, INC.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.5,"gross":79.71,"acres":39.86,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-10","landowner":"MARTSON LAND AND MINERALS, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":79.71,"acres":13.29,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-10","landowner":"SWALLOW HARBOR, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":79.71,"acres":13.29,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-11","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":30,"acres":30,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-13","landowner":"RUSSELL RAY PRINE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":26,"acres":26,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-01","landowner":"JOHN CECIL AND NORMA LYNN STARKS, III","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":40,"acres":40,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-02","landowner":"JOHN CECIL AND NORMA LYNN STARKS, III","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":40,"acres":40,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-03","landowner":"SOUTHMEATH, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":68.48,"acres":68.48,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-04","landowner":"SOUTHMEATH, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":34.75,"acres":34.75,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-05","landowner":"SUGARLAND FARM, INC.","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":1.73,"acres":1.73,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-06","landowner":"WEST MEATH, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":51.5,"acres":51.5,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-07","landowner":"ANDREA LENEA CARRAWAY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.25,"gross":15,"acres":3.75,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-07","landowner":"BARBARA CARTER CARRAWAY, USUFRUCTUARY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"NEGOTIATING","interest":0.75,"gross":15,"acres":11.25,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-09","landowner":"SOUTHMEATH, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":5.88,"acres":5.88,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-10","landowner":"CARY JOHN STEVENS","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":51.52,"acres":51.52,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E9-01","landowner":"PAUL C. GOWAN LAND TRUST","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":75.75,"acres":75.75,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E9-02","landowner":"BRIAN LANE MILLER","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.666667,"gross":80,"acres":53.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E9-02","landowner":"ROBERT STEVEN MILLER","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.333333,"gross":80,"acres":26.67,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E9-03","landowner":"JOSEPH FRANCIS AND TERRI SYLVESTRI","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":40,"acres":40,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E9-04","landowner":"KEVIN LAMAR AND AMY HALE","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":85,"acres":85,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E9-05","landowner":"SBS FARMS, LLC","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":35,"acres":35,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E33-01","landowner":"POVERTY POINT PRODUCE CO.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":80,"acres":80,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-01","landowner":"LYDE WORTHINGTON RAWLS","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":1,"gross":77.17,"acres":77.17,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"REBECCA DOLES CHANEY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":40,"acres":6.67,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"HEZ NEWTON ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.111111,"gross":40,"acres":4.44,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"TOM WADE ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.055556,"gross":40,"acres":2.22,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"DEBORAH ANN DOLES RAMSEY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.166667,"gross":40,"acres":6.67,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"REAGAN WEST CARROLL PROPERTIES, LLC","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"NEGOTIATING","trStatus":"NEGOTIATING","interest":0.333333,"gross":40,"acres":13.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"CAROL ANN ELKINS CHRISMAN","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.018519,"gross":40,"acres":0.74,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"RICHARD DALE ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.018519,"gross":40,"acres":0.74,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"BOBBY STEPHEN ELKINS","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.018519,"gross":40,"acres":0.74,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"BRUCE HANEY","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":40,"acres":1.11,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"CYNTHIA LYNN HANEY","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":40,"acres":1.11,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"JAMES ALAN MISENHEIMER","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":40,"acres":1.11,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-02","landowner":"PAULA MISENHEIMER SCHILDROTH","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"NEGOTIATING","interest":0.027778,"gross":40,"acres":1.11,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-03","landowner":"B-J FARMS, INC.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":10,"acres":10,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-06","landowner":"RODNEY LEE SMITHERMAN","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":4,"acres":4,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E16-04","landowner":"AMBER NICOLE WYATT","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":2,"acres":2,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-10","landowner":"GRAYSON FORREST AND HANNAH ELISABETH PARKER","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":11.88,"acres":11.88,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E22-04","landowner":"MARK E. AND REBECCA S. MILLER","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":90.21,"acres":90.21,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-02","landowner":"MARK E. AND REBECCA S. MILLER","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":41.35,"acres":41.35,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-20","landowner":"MARK E. AND REBECCA S. MILLER","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":16.8,"acres":16.8,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-02","landowner":"FRANK AND OUIDA SHIVERS ECKARD","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"NEGOTIATING","trStatus":"DELIVERED","interest":0.958333,"gross":53,"acres":50.79,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-02","landowner":"JOSHUA TRAVIS BOX","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":0.041667,"gross":53,"acres":2.21,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-03","landowner":"BRENTON RAY PRINE","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":26,"acres":26,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-08","landowner":"JEFF L. AND KAREN B. SYKES","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-12","landowner":"RICKY AND JESSICA CARROLL STARKS, JR.","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":2,"acres":2,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-14","landowner":"PENNY PRINE BRADBURY","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":1,"gross":26.5,"acres":26.5,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-03","landowner":"JENNIFER LANCASTER GILFOIL","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":0.333333,"gross":40,"acres":13.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-03","landowner":"ROBERT JAMES LANCASTER, JR.","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"DELIVERED","trStatus":"DELIVERED","interest":0.333333,"gross":40,"acres":13.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-20N10E34-03","landowner":"JOHN MCINTOSH LANCASTER","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"DELIVERED","interest":0.333333,"gross":40,"acres":13.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E10-03","landowner":"STEVE WAYNE PLUNKETT","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":8,"acres":8,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-01","landowner":"L.L. GOLSON, INC.","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":55,"acres":55,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E2-04","landowner":"PRINE FAMILY TRUST","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":67.4,"acres":67.4,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-06","landowner":"NORENE SELLERS","county":"WEST CARROLL","assigned":"BOB DERISE","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":11.58,"acres":11.58,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E26-03","landowner":"ALICE FAY HENRY","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":4,"acres":4,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E3-06","landowner":"JEREMY HEATH PRINE","county":"WEST CARROLL","assigned":"ALVIN LASSEIGNE","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":1,"acres":1,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E4-08","landowner":"CONNIE CARTER MCNEIL","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"MAILED","trStatus":"MAILED","interest":1,"gross":12.33,"acres":12.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-02","landowner":"4-M LAND, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"LEGAL","trStatus":"LEGAL","interest":1,"gross":71.07,"acres":71.07,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-02-SS","landowner":"4-M LAND, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"LEGAL","trStatus":"LEGAL","interest":1,"gross":0.75,"acres":0.75,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-05","landowner":"4-M LAND, LLC","county":"WEST CARROLL","assigned":"SCOTT BROUSSARD","loStatus":"LEGAL","trStatus":"LEGAL","interest":1,"gross":231.19,"acres":231.19,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA035-19N10E24-05","landowner":"LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT","county":"EAST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":7.14,"acres":7.14,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E1-09","landowner":"WEST CARROLL POLICE JURY","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":2,"acres":2,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E11-03","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":30.68,"acres":30.68,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E12-03","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":45.33,"acres":45.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-02","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":140.33,"acres":140.33,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E13-04","landowner":"STATE OF LOUISIANA","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":16.37,"acres":16.37,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-04","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":186.08,"acres":186.08,"infra":"N","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E14-07","landowner":"STATE OF LOUISIANA","county":"WEST CARROLL","assigned":"CRAIG PUGLIESE","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":50.63,"acres":50.63,"infra":"Y","infraGross":0,"infraNet":0},
+{"tractId":"LA123-19N10E23-21","landowner":"LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":7.14,"acres":7.14,"infra":"N","infraGross":0,"infraNet":0}
+];
+
+;
 
 
 const tractTableInstances = [
   { tableId: 'loTable', tableBodyId: 'loTableBody', emptyId: 'loEmpty', countId: 'loCount', searchInputId: 'loSearchInput', sort: { key: 'tractId', dir: 1 }, searchTerm: '' },
-  { tableId: 'loTable2', tableBodyId: 'loTableBody2', emptyId: 'loEmpty2', countId: 'loCount2', searchInputId: 'loSearchInput2', sort: { key: 'tractId', dir: 1 }, searchTerm: '', exportButtonId: 'loExportBtn2' },
 ];
 
 /* Flattens landownerDetails into one row per tract — Tract, Landowner, Status, Acres,
@@ -1879,6 +2136,201 @@ function renderMovement(){
 function renderAllTractTables(){
   tractTableInstances.forEach(renderTractTable);
 }
+
+/* ---------------- EPPS Line List tab (independent of Raw Data / landownerData) ----------------
+   Uses its own status set, its own filter pills, and its own search/sort state — kept fully
+   separate from the `selected` variable and pill rows that drive the Acquisition Summary tab,
+   since this source's statuses (e.g. PARTIALLY ACQUIRED) don't exist in the mapper export's
+   MAIL_STATUS and shouldn't affect the map, gauge, or front-page table. */
+const LINE_LIST_STATUS_ORDER = ['ACQUIRED','PARTIALLY ACQUIRED','NEGOTIATING','DELIVERED','MAILED','LEGAL','STATE LANDS'];
+const LINE_LIST_STATUS_RANK = {};
+LINE_LIST_STATUS_ORDER.forEach((name, i) => { LINE_LIST_STATUS_RANK[name] = i; });
+let lineListSelected = 'ALL';
+let lineListSort = { key: 'status', dir: 1 };
+let lineListSearchTerm = '';
+
+function renderLineListPills(){
+  const row = document.getElementById('loPillRow2');
+  if(!row) return;
+  row.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'pill' + (lineListSelected==='ALL' ? ' active':'');
+  allBtn.textContent = 'ALL';
+  allBtn.onclick = ()=>{ lineListSelected = 'ALL'; renderLineListPills(); renderLineListTable(); };
+  row.appendChild(allBtn);
+
+  LINE_LIST_STATUS_ORDER.forEach(name=>{
+    const p = document.createElement('button');
+    p.className = 'pill' + (name===lineListSelected ? ' active':'');
+    const c = statusColor(name);
+    const swatch = `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0;"></span>`;
+    p.innerHTML = swatch + ' ' + name;
+    if(name===lineListSelected){
+      p.style.background = c;
+      p.style.borderColor = c;
+      p.style.color = '#0b0f1a';
+      p.style.boxShadow = `0 0 0 4px ${c}55`;
+    }
+    p.onclick = ()=>{ lineListSelected = name; renderLineListPills(); renderLineListTable(); };
+    row.appendChild(p);
+  });
+}
+
+function renderLineListTable(){
+  const tbody = document.getElementById('loTableBody2');
+  const empty = document.getElementById('loEmpty2');
+  const countEl = document.getElementById('loCount2');
+  if(!tbody || typeof eppsLineList === 'undefined') return;
+
+  let rows = eppsLineList;
+  if(lineListSelected !== 'ALL'){
+    rows = rows.filter(r => r.trStatus === lineListSelected);
+  }
+  if(lineListSearchTerm.trim()){
+    const term = lineListSearchTerm.trim().toLowerCase();
+    rows = rows.filter(r => r.landowner.toLowerCase().includes(term) || String(r.tractId).toLowerCase().includes(term));
+  }
+
+  rows = rows.slice().sort((a,b)=>{
+    const k = lineListSort.key;
+    if(k === 'trStatus' || k === 'loStatus'){
+      const ar = LINE_LIST_STATUS_RANK[a[k]] ?? 99, br = LINE_LIST_STATUS_RANK[b[k]] ?? 99;
+      if(ar !== br) return (ar - br) * lineListSort.dir;
+      return a.tractId < b.tractId ? -1 : a.tractId > b.tractId ? 1 : 0;
+    }
+    let av = a[k], bv = b[k];
+    if(typeof av === 'string'){ av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if(av < bv) return -1 * lineListSort.dir;
+    if(av > bv) return 1 * lineListSort.dir;
+    return 0;
+  });
+
+  countEl.textContent = `${rows.length} tract${rows.length===1?'':'s'}`;
+  lineListCurrentRows = rows;
+
+  if(rows.length === 0){
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="lo-tract-id">${r.tractId}</td>
+        <td class="lo-name">${r.landowner}</td>
+        <td>${r.county}</td>
+        <td><span class="lo-status-chip" style="background:${statusColor(r.loStatus)}">${r.loStatus}</span></td>
+        <td><span class="lo-status-chip" style="background:${statusColor(r.trStatus)}">${r.trStatus}</span></td>
+        <td>${r.interest != null ? r.interest.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:6}) : '—'}</td>
+        <td>${r.gross.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.acres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.infra}</td>
+        <td>${r.infraGross.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.infraNet.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.assigned}</td>
+      </tr>
+    `).join('');
+  }
+
+  document.querySelectorAll('#loTable2 th[data-sort]').forEach(th=>{
+    const key = th.getAttribute('data-sort');
+    const arrow = th.querySelector('.arrow');
+    if(key === lineListSort.key){
+      th.classList.add('active');
+      arrow.textContent = lineListSort.dir === 1 ? '▲' : '▼';
+    } else {
+      th.classList.remove('active');
+      arrow.textContent = '';
+    }
+  });
+}
+
+/* Exports the currently visible rows as a real, formatted Excel Table (banded rows, bold
+   filled header, autofilter, frozen header row) using ExcelJS — matching the look of the
+   Line List tab in the source mapper export, rather than a plain flat sheet of values. */
+let lineListCurrentRows = [];
+async function exportLineListToXlsx(){
+  const btn = document.getElementById('loExportBtn2');
+  if(typeof ExcelJS === 'undefined'){
+    if(btn) btn.textContent = 'Export unavailable (offline?)';
+    return;
+  }
+  const originalLabel = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = 'Building file…'; }
+
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('EPPS Line List', { views: [{ state: 'frozen', ySplit: 1 }] });
+
+    const columns = [
+      { header: 'Tract',            key: 'tractId',    width: 22 },
+      { header: 'Landowner',        key: 'landowner',  width: 40 },
+      { header: 'County',           key: 'county',     width: 14 },
+      { header: 'Landowner Status', key: 'loStatus',   width: 16 },
+      { header: 'Tract Status',     key: 'trStatus',   width: 18 },
+      { header: 'Interest',         key: 'interest',   width: 11 },
+      { header: 'Gross Acres',      key: 'gross',      width: 13 },
+      { header: 'Net Acres',        key: 'acres',      width: 12 },
+      { header: 'Infra?',           key: 'infra',      width: 9  },
+      { header: 'Infra Gross $',    key: 'infraGross', width: 15 },
+      { header: 'Infra Net $',      key: 'infraNet',   width: 14 },
+      { header: 'Assigned To',      key: 'assigned',   width: 20 },
+    ];
+    columns.forEach((c, i) => { ws.getColumn(i+1).width = c.width; });
+
+    // Writing via addTable produces a real Excel Table object (named range, autofilter
+    // dropdowns, and a genuine banded table style Excel itself recognizes) — the same kind
+    // of object ("Table3" / TableStyleMedium16) the source mapper export's Line List tab
+    // uses, rather than just coloring cells to look similar.
+    ws.addTable({
+      name: 'EPPSLineList',
+      ref: 'A1',
+      headerRow: true,
+      totalsRow: false,
+      style: { theme: 'TableStyleMedium16', showRowStripes: true },
+      columns: columns.map(c => ({ name: c.header })),
+      rows: lineListCurrentRows.map(r => columns.map(c => r[c.key])),
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const currWeek = (typeof history !== 'undefined' && history.length) ? history[history.length-1].date.replace(/\s+/g,'_') : 'export';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EPPS_Line_List_${currWeek}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+  }
+}
+
+renderLineListPills();
+renderLineListTable();
+const lineListSearchInput = document.getElementById('loSearchInput2');
+if(lineListSearchInput){
+  lineListSearchInput.addEventListener('input', (e)=>{
+    lineListSearchTerm = e.target.value;
+    renderLineListTable();
+  });
+}
+document.querySelectorAll('#loTable2 th[data-sort]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.getAttribute('data-sort');
+    if(lineListSort.key === key){
+      lineListSort.dir *= -1;
+    } else {
+      lineListSort.key = key;
+      lineListSort.dir = (key === 'acres' || key === 'footage' || key === 'rods' || key === 'miles') ? -1 : 1;
+    }
+    renderLineListTable();
+  });
+});
+const lineListExportBtn = document.getElementById('loExportBtn2');
+if(lineListExportBtn) lineListExportBtn.addEventListener('click', exportLineListToXlsx);
 
 function renderTractTable(instance){
   const tbody = document.getElementById(instance.tableBodyId);
@@ -2007,41 +2459,7 @@ tractTableInstances.forEach(instance => {
       renderTractTable(instance);
     });
   });
-  if(instance.exportButtonId){
-    const btn = document.getElementById(instance.exportButtonId);
-    if(btn) btn.addEventListener('click', ()=> exportTractTableToXlsx(instance));
-  }
 });
-
-/* Exports exactly what's currently on screen for this table instance — respecting the
-   active status filter, search term, and sort — as a downloadable .xlsx file via SheetJS
-   (loaded from the CDN script tag in <head>). */
-function exportTractTableToXlsx(instance){
-  const btn = document.getElementById(instance.exportButtonId);
-  if(typeof XLSX === 'undefined'){
-    if(btn) btn.textContent = 'Export unavailable (offline?)';
-    return;
-  }
-  const rows = instance.currentRows || [];
-  const sheetData = rows.map(r => ({
-    'Tract': r.tractId,
-    'Landowner': r.name,
-    'Status': r.status,
-    'Interest': r.interest != null ? r.interest : '',
-    'Gross Acres': r.gross != null ? r.gross : '',
-    'Net Acres': r.acres,
-    'Net Miles': r.miles,
-    'Assigned To': r.assigned,
-  }));
-  const ws = XLSX.utils.json_to_sheet(sheetData);
-  ws['!cols'] = [
-    { wch: 22 }, { wch: 40 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 11 }, { wch: 20 },
-  ];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'EPPS Line List');
-  const currWeek = (typeof history !== 'undefined' && history.length) ? history[history.length-1].date.replace(/\s+/g,'_') : 'export';
-  XLSX.writeFile(wb, `EPPS_Line_List_${currWeek}.xlsx`);
-}
 
 /* ---------------- Landowner Movement ---------------- */
 
