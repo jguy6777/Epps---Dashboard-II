@@ -401,19 +401,6 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
-  .iol-embed-panel{
-    background: var(--panel);
-    border:1px solid var(--border);
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:16px;
-    overflow:hidden;
-  }
-  .iol-embed-panel iframe{
-    display:block;
-    border-radius:8px;
-    background:#fff;
-  }
   .lo-filter-row{
     display:flex;
     gap:10px;
@@ -477,6 +464,30 @@
   .lo-export-btn:hover{ color:var(--text-hi); border-color:var(--blue-soft); background: var(--panel); }
   .lo-export-btn:disabled{ opacity:0.5; cursor:default; }
   .lo-export-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  .iol-sync-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .iol-sync-status{ font-size:12px; color:var(--text-lo); }
+  .iol-sync-status.ok{ color: var(--up, #4ade80); }
+  .iol-sync-status.err{ color: var(--down); }
+  .iol-sync-diagnostic{
+    background: rgba(255,255,255,0.03);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:16px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    color: var(--text-mid);
+    white-space:pre-wrap;
+    word-break:break-word;
+  }
   .lo-table-wrap{ overflow-x:auto; overflow-y:auto; max-height:720px; }
   /* No overflow set here on purpose: setting even overflow-x:auto would force the browser
      to also compute overflow-y as auto (a real CSS rule — one non-visible axis pulls the
@@ -1259,18 +1270,74 @@
   <div id="tabPanel-tracking" class="tab-panel">
   <div class="section-head">
     <div>
-      <div class="eyebrow">IOL · Live Tracking Sheet</div>
+      <div class="eyebrow">IOL · Tracking Sheet</div>
       <h2>IOL Tracking</h2>
-      <p>Embedded directly from the OneDrive/SharePoint spreadsheet — always shows the live sheet, no re-upload needed when it changes</p>
+      <p>All 255 tracts from ETC - EPPS - Line List - Master.xlsx — a cost/acquisition tracking model, searchable by landowner or tract ID, filterable by status</p>
     </div>
   </div>
-  <div class="iol-embed-panel">
-    <iframe
-      src="https://schoeffler-my.sharepoint.com/personal/jguy_segland_com/_layouts/15/Doc.aspx?sourcedoc={f58a2c6e-9029-452b-b302-b6e10826fb9b}&action=embedview&wdAllowInteractivity=False&wdHideGridlines=True&wdHideHeaders=True&wdDownloadButton=True&wdInConfigurator=True&wdInConfigurator=True"
-      width="100%" height="900" frameborder="0" scrolling="yes"
-      title="IOL Tracking Spreadsheet"></iframe>
+
+  <div class="lo-panel" style="margin-bottom:20px;">
+    <div class="iol-sync-row">
+      <button class="lo-export-btn" id="iolSyncBtn" type="button">⟳ Try Live Sync from SharePoint</button>
+      <span class="iol-sync-status" id="iolSyncStatus">Currently showing a static snapshot uploaded manually — not yet live.</span>
+    </div>
+    <div class="iol-sync-diagnostic" id="iolSyncDiagnostic" style="display:none;"></div>
+    <div class="lo-filter-row" id="iolPillRow"></div>
+    <div class="lo-controls">
+      <div class="lo-search">
+        <input type="text" id="iolSearchInput" placeholder="Search landowner or tract…">
+      </div>
+      <div class="lo-count" id="iolCount">3 tracts</div>
+      <div class="lo-export-group">
+        <button class="lo-export-btn" id="iolExportBtn" type="button">⬇ Export to Excel</button>
+      </div>
+    </div>
+    <div class="lo-table-wrap">
+      <table class="lo-table" id="iolTable">
+        <thead>
+          <tr>
+            <th data-sort="tractId" class="active">Tract<span class="arrow">▲</span></th>
+            <th data-sort="landowner">Landowner<span class="arrow"></span></th>
+            <th data-sort="address">Address<span class="arrow"></span></th>
+            <th data-sort="city">City<span class="arrow"></span></th>
+            <th data-sort="state">State<span class="arrow"></span></th>
+            <th data-sort="zip">Zip<span class="arrow"></span></th>
+            <th data-sort="county">County<span class="arrow"></span></th>
+            <th data-sort="status">Status<span class="arrow"></span></th>
+            <th data-sort="mailedDate">Merge/Mailed Date<span class="arrow"></span></th>
+            <th data-sort="interest">Interest<span class="arrow"></span></th>
+            <th data-sort="acres">Acres<span class="arrow"></span></th>
+            <th data-sort="netAcres">Net Acres<span class="arrow"></span></th>
+            <th data-sort="netFootage">Net Footage<span class="arrow"></span></th>
+            <th data-sort="netRods">Net Rods<span class="arrow"></span></th>
+            <th data-sort="pipeCost">Pipe Cost<span class="arrow"></span></th>
+            <th data-sort="iwWellCount">IW Well Count<span class="arrow"></span></th>
+            <th data-sort="iwWellCost">IW Well Cost<span class="arrow"></span></th>
+            <th data-sort="obsWellCount">OBS/DIS Well Count<span class="arrow"></span></th>
+            <th data-sort="obsWellCost">OBS/DIS Well Cost<span class="arrow"></span></th>
+            <th data-sort="rectifierSite">Rectifier Site<span class="arrow"></span></th>
+            <th data-sort="rectifierCost">Rectifier Site Cost<span class="arrow"></span></th>
+            <th data-sort="surfaceSiteCost">Surface Site Cost<span class="arrow"></span></th>
+            <th data-sort="bonusPayment">Bonus Payment<span class="arrow"></span></th>
+            <th data-sort="infraTotalCost">Infrastructure Total Cost<span class="arrow"></span></th>
+            <th data-sort="totalCost">Total Cost<span class="arrow"></span></th>
+            <th data-sort="broker">Broker<span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="iolTableBody">
+      <tr>
+        <td class="lo-name">LLOYD E. NEAL, INC.</td>
+        <td><span class="lo-status-chip" style="background:#ffff73">ACQUIRED</span></td>
+        <td>419.96</td>
+        <td>5</td>
+        <td>LARRY BERTRAND</td>
+      </tr>
+    </tbody>
+      </table>
+      <div class="lo-empty" id="iolEmpty" style="display:none;">No tracts match your search.</div>
+    </div>
+    <div class="lo-note">Source: ETC - EPPS - Line List - Master.xlsx, a separate cost/acquisition tracking spreadsheet the ETC team updates more frequently than the weekly mapper export. Mailing address, Merge/Mailed Date, and the full cost breakdown behind Total Cost are included; the source file's Assessed Address/City/State/Zip and other personal contact fields (phone, email, signatures) were intentionally left out here. Status is pulled live from the EPPS Line List tab's tract-level status, since this sheet's own Status field is mostly blank. Filter pills and totals on this tab are independent of the rest of the dashboard. This table is wide — scroll sideways within it to see every column.</div>
   </div>
-  <div class="lo-note">This is a live embed of the actual spreadsheet on SharePoint — updates made to the sheet appear here automatically. Access follows whatever sharing permissions are set on the file itself; if a viewer can't see it, check the file's sharing settings in SharePoint/OneDrive rather than anything on this dashboard.</div>
   </div><!-- /tabPanel-tracking -->
 
   <!-- Shared tract detail modal — lives outside every tab panel (not nested in any
@@ -1408,7 +1475,8 @@ const STATUS_COLORS = {
   'MAILED':      '#ffebaf',
   'LEGAL':       '#ffaa00',
   'STATE LANDS': '#ff7f7f',
-  'PARTIALLY ACQUIRED': '#c9a4ff'
+  'PARTIALLY ACQUIRED': '#c9a4ff',
+  'UNASSIGNED': '#5c6b82'
 };
 function statusColor(name){ return STATUS_COLORS[name] || '#4c8dff'; }
 
@@ -2059,6 +2127,279 @@ const eppsLineList = [
 {"tractId":"LA123-19N10E23-21","landowner":"LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT","county":"WEST CARROLL","assigned":"LARRY BERTRAND","loStatus":"STATE LANDS","trStatus":"STATE LANDS","interest":1,"gross":7.14,"acres":7.14,"infra":"N","infraGross":0,"infraNet":0}
 ];
 
+/* ---------------- IOL Tracking (ETC - EPPS - Line List - Master.xlsx) ----------------
+   A separate, more frequently-updated tracking spreadsheet (255 rows) — a cost/acquisition
+   model, not the weekly mapper export. Kept independent of the rest of the dashboard, with
+   its own filter pills. Includes mailing address, Merge/Mailed Date, and the full cost
+   breakdown that makes up Total Cost (pipe, well, rectifier site, surface site, bonus,
+   infrastructure). Status is NOT stored here — it's joined in at render time from the EPPS
+   Line List tab's tract-level status, since this sheet's own Status column is populated for
+   only 2 of 255 rows. The source file's Assessed Address/City/State/Zip and other personal
+   contact fields (phone, email, signatures) were left out of this dashboard on purpose.
+   mailedDate is either a date (YYYY-MM-DD) or a status note like "DO NOT MAIL" — some rows
+   use the field that way in the source file. */
+let iolTracking = [
+{"tractId":"LA035-19N10E1-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":285.34,"netAcres":285.34,"netFootage":4918.56,"netRods":298.09,"pipeCost":149047.29,"iwWellCount":2.0,"iwWellCost":2000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":500,"surfaceSiteCost":0,"bonusPayment":285341.56,"infraTotalCost":151547.29,"totalCost":436888.85},
+{"tractId":"LA035-19N10E1-02","landowner":"RICKIE REESE AND KIMBERLY KIRKLAND ARLEDGE","address":"4116 HWY 877","city":"LAKE PROVIDENCE","state":"LA","zip":"71254","county":"EAST","mailedDate":"2026-08-05","broker":"BOB DERISE","interest":1,"acres":78.97,"netAcres":78.97,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":78973.57,"infraTotalCost":0,"totalCost":78973.57},
+{"tractId":"LA035-19N10E12-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":126.48,"netAcres":126.48,"netFootage":5580.22,"netRods":338.2,"pipeCost":169097.6,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"Y","rectifierCost":500,"surfaceSiteCost":0,"bonusPayment":126478.76,"infraTotalCost":171097.6,"totalCost":297576.36},
+{"tractId":"LA035-19N10E12-01-SS","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":0.54,"netAcres":0.54,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":1080.57,"bonusPayment":0,"infraTotalCost":1080.57,"totalCost":1080.57},
+{"tractId":"LA035-19N10E12-02","landowner":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","address":"111 ELLIS LANE","city":"RAYVILLE","state":"LA","zip":"71269","county":"EAST","mailedDate":"2026-08-05","broker":"SCOTT BROUSSARD","interest":1,"acres":105.64,"netAcres":105.64,"netFootage":321.5,"netRods":19.49,"pipeCost":9742.57,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":105640.54,"infraTotalCost":10742.57,"totalCost":116383.11},
+{"tractId":"LA035-19N10E13-01","landowner":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","address":"111 ELLIS LANE","city":"RAYVILLE","state":"LA","zip":"71269","county":"EAST","mailedDate":"2026-08-05","broker":"SCOTT BROUSSARD","interest":1,"acres":184.36,"netAcres":184.36,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":184361.86,"infraTotalCost":500,"totalCost":184861.86},
+{"tractId":"LA035-19N10E24-01","landowner":"BRANDON F. AND ROBIN DELANE MILLER MULHERN","address":"111 ELLIS LANE","city":"RAYVILLE","state":"LA","zip":"71269","county":"EAST","mailedDate":"2026-08-05","broker":"SCOTT BROUSSARD","interest":1,"acres":35.0,"netAcres":35.0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":34997.6,"infraTotalCost":0,"totalCost":34997.6},
+{"tractId":"LA035-19N10E24-04","landowner":"DAVE'S BAYOU LAND COMPANY, LLC","address":"P. O. BOX 14550","city":"MONROE","state":"LA","zip":"71207","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":32,"netAcres":32,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":32000,"infraTotalCost":0,"totalCost":32000},
+{"tractId":"LA035-19N10E24-05","landowner":"LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT","address":"P. O. BOX 94245","city":"BATON ROUGE","state":"LA","zip":"70804","county":"EAST","mailedDate":"DO NOT MAIL","broker":"LARRY BERTRAND","interest":1,"acres":7.14,"netAcres":7.14,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":7145,"infraTotalCost":0,"totalCost":7145},
+{"tractId":"LA035-19N10E24-06","landowner":"FARMERS ONE STOP, INC.","address":"10395 HWY 134","city":"LAKE PROVIDENCE","state":"LA","zip":"71254","county":"EAST","mailedDate":"2026-08-06","broker":"IAN MCCLELLAND","interest":1,"acres":1.3,"netAcres":1.3,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1300,"infraTotalCost":0,"totalCost":1300},
+{"tractId":"LA035-19N11E18-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":7.56,"netAcres":7.56,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":7560,"infraTotalCost":0,"totalCost":7560},
+{"tractId":"LA035-19N11E18-02","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-10","broker":"SCOTT BROUSSARD","interest":0.29,"acres":33.05,"netAcres":9.59,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":9585.93,"infraTotalCost":0,"totalCost":9585.93},
+{"tractId":"LA035-19N11E18-02","landowner":"DAVID R. ROBERTSON, II","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-11","broker":"SCOTT BROUSSARD","interest":0.355,"acres":33.05,"netAcres":11.73,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":11734.5,"infraTotalCost":0,"totalCost":11734.5},
+{"tractId":"LA035-19N11E18-02","landowner":"TABITHA A. ROBERTSON DURBIN","address":"307 DUNVEGAN COURT","city":"LAFAYETTE","state":"LA","zip":"70503","county":"EAST","mailedDate":"2026-08-26","broker":"SCOTT BROUSSARD","interest":0.355,"acres":33.05,"netAcres":11.73,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":11734.5,"infraTotalCost":0,"totalCost":11734.5},
+{"tractId":"LA035-19N11E5-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":101.16,"netAcres":101.16,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":101161.83,"infraTotalCost":0,"totalCost":101161.83},
+{"tractId":"LA035-19N11E5-02","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":15,"netAcres":15,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":15000,"infraTotalCost":0,"totalCost":15000},
+{"tractId":"LA035-19N11E6-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":528.54,"netAcres":528.54,"netFootage":4526.26,"netRods":274.32,"pipeCost":137159.39,"iwWellCount":3.0,"iwWellCost":3000,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":528537.67,"infraTotalCost":140659.39,"totalCost":669197.07},
+{"tractId":"LA035-19N11E6-02","landowner":"RICKIE REESE AND KIMBERLY KIRKLAND ARLEDGE","address":"4116 HWY 877","city":"LAKE PROVIDENCE","state":"LA","zip":"71254","county":"EAST","mailedDate":"2026-08-05","broker":"BOB DERISE","interest":1,"acres":52.71,"netAcres":52.71,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":52706.43,"infraTotalCost":0,"totalCost":52706.43},
+{"tractId":"LA035-19N11E6-03","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-10","broker":"SCOTT BROUSSARD","interest":0.29,"acres":70.69,"netAcres":20.5,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":20499.18,"infraTotalCost":0,"totalCost":20499.18},
+{"tractId":"LA035-19N11E6-03","landowner":"DAVID R. ROBERTSON, II","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-11","broker":"SCOTT BROUSSARD","interest":0.355,"acres":70.69,"netAcres":25.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":25093.82,"infraTotalCost":0,"totalCost":25093.82},
+{"tractId":"LA035-19N11E6-03","landowner":"TABITHA A. ROBERTSON DURBIN","address":"307 DUNVEGAN COURT","city":"LAFAYETTE","state":"LA","zip":"70503","county":"EAST","mailedDate":"2026-08-26","broker":"SCOTT BROUSSARD","interest":0.355,"acres":70.69,"netAcres":25.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":25093.82,"infraTotalCost":0,"totalCost":25093.82},
+{"tractId":"LA035-19N11E7-01","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":298.73,"netAcres":298.73,"netFootage":7029.8,"netRods":426.05,"pipeCost":213024.28,"iwWellCount":3.0,"iwWellCost":3000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":500,"surfaceSiteCost":0,"bonusPayment":298730.17,"infraTotalCost":216524.28,"totalCost":515254.45},
+{"tractId":"LA035-19N11E7-02","landowner":"NO MISTAKE PLANTATION, INC.","address":"3452 HWY 145 N","city":"CHOUDRANT","state":"LA","zip":"71227","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":119.13,"netAcres":119.13,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":119129.14,"infraTotalCost":500,"totalCost":119629.14},
+{"tractId":"LA035-19N11E7-03","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-10","broker":"SCOTT BROUSSARD","interest":0.29,"acres":189.56,"netAcres":54.97,"netFootage":83.02,"netRods":5.03,"pipeCost":2515.87,"iwWellCount":1.0,"iwWellCost":290,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":54973.75,"infraTotalCost":2805.87,"totalCost":57779.62},
+{"tractId":"LA035-19N11E7-03","landowner":"DAVID R. ROBERTSON, II","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-11","broker":"SCOTT BROUSSARD","interest":0.355,"acres":189.56,"netAcres":67.3,"netFootage":101.63,"netRods":6.16,"pipeCost":3079.77,"iwWellCount":1.0,"iwWellCost":355,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":67295.45,"infraTotalCost":3434.77,"totalCost":70730.22},
+{"tractId":"LA035-19N11E7-03","landowner":"TABITHA A. ROBERTSON DURBIN","address":"307 DUNVEGAN COURT","city":"LAFAYETTE","state":"LA","zip":"70503","county":"EAST","mailedDate":"2026-08-26","broker":"SCOTT BROUSSARD","interest":0.355,"acres":189.56,"netAcres":67.3,"netFootage":101.63,"netRods":6.16,"pipeCost":3079.77,"iwWellCount":1.0,"iwWellCost":355,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":67295.45,"infraTotalCost":3434.77,"totalCost":70730.22},
+{"tractId":"LA035-19N11E7-04","landowner":"BLACK GOLD PRODUCTION SERVICES, LLC","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-10","broker":"SCOTT BROUSSARD","interest":0.29,"acres":13.88,"netAcres":4.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4025.37,"infraTotalCost":0,"totalCost":4025.37},
+{"tractId":"LA035-19N11E7-04","landowner":"DAVID R. ROBERTSON, II","address":"33681 HWY 43","city":"INDEPENDENCE","state":"LA","zip":"70443","county":"EAST","mailedDate":"2026-08-11","broker":"SCOTT BROUSSARD","interest":0.355,"acres":13.88,"netAcres":4.93,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4927.61,"infraTotalCost":0,"totalCost":4927.61},
+{"tractId":"LA035-19N11E7-04","landowner":"TABITHA A. ROBERTSON DURBIN","address":"307 DUNVEGAN COURT","city":"LAFAYETTE","state":"LA","zip":"70503","county":"EAST","mailedDate":"2026-08-26","broker":"SCOTT BROUSSARD","interest":0.355,"acres":13.88,"netAcres":4.93,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4927.61,"infraTotalCost":0,"totalCost":4927.61},
+{"tractId":"LA035-19N11E8-01","landowner":"NO MISTAKE PLANTATION, INC.","address":"3452 HWY 145 N","city":"CHOUDRANT","state":"LA","zip":"71227","county":"EAST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":160.87,"netAcres":160.87,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":160870.86,"infraTotalCost":0,"totalCost":160870.86},
+{"tractId":"LA123-19N10E10-01","landowner":"GLENNDELL FAMILY FARM CORPORATION","address":"72244 GORDON AVENUE","city":"ABITA SPRINGS","state":"LA","zip":"70420","county":"WEST","mailedDate":"DO NOT MAIL","broker":"IAN MCCLELLAND","interest":1,"acres":319,"netAcres":319,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":319000,"infraTotalCost":500,"totalCost":319500},
+{"tractId":"LA123-19N10E10-02","landowner":"GLENNDELL FAMILY FARM CORPORATION","address":"72244 GORDON AVENUE","city":"ABITA SPRINGS","state":"LA","zip":"70420","county":"WEST","mailedDate":"2026-09-04","broker":"IAN MCCLELLAND","interest":1,"acres":34,"netAcres":34,"netFootage":1621.04,"netRods":98.24,"pipeCost":49122.45,"iwWellCount":0,"iwWellCost":0,"obsWellCount":2.0,"obsWellCost":1000,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":34000,"infraTotalCost":50122.45,"totalCost":84122.45},
+{"tractId":"LA123-19N10E10-02-SS","landowner":"GLENNDELL FAMILY FARM CORPORATION","address":"72244 GORDON AVENUE","city":"ABITA SPRINGS","state":"LA","zip":"70420","county":"WEST","mailedDate":"2026-09-04","broker":"IAN MCCLELLAND","interest":1,"acres":9.76,"netAcres":9.76,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":19529.02,"bonusPayment":0,"infraTotalCost":19529.02,"totalCost":19529.02},
+{"tractId":"LA123-19N10E10-03","landowner":"STEVE WAYNE PLUNKETT","address":"P.O. BOX 202","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":8,"netAcres":8,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":8000,"infraTotalCost":0,"totalCost":8000},
+{"tractId":"LA123-19N10E10-04","landowner":"WILLIAM TERRY AND VICKI PRINE PILLARS","address":"132 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"CRAIG PUGLIESE","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E10-05","landowner":"FRANK SCOTT MORAN","address":"P. O. BOX 4848","city":"SHREVEPORT","state":"LA","zip":"71134","county":"WEST","mailedDate":"2026-08-04","broker":"IAN MCCLELLAND","interest":1,"acres":82.59,"netAcres":82.59,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":82590,"infraTotalCost":0,"totalCost":82590},
+{"tractId":"LA123-19N10E10-06","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":201.88,"netAcres":201.88,"netFootage":2671.05,"netRods":161.88,"pipeCost":80941.06,"iwWellCount":1,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":201880.26,"infraTotalCost":81941.06,"totalCost":283821.32},
+{"tractId":"LA123-19N10E1-03","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":128.4,"netAcres":128.4,"netFootage":3257.14,"netRods":197.4,"pipeCost":98701.12,"iwWellCount":3,"iwWellCost":3000,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":128403.35,"infraTotalCost":102201.12,"totalCost":230604.47},
+{"tractId":"LA123-19N10E1-04","landowner":"STEVEN L. AND CHRISTIE HALE BROWN","address":"5739 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"CRAIG PUGLIESE","interest":1,"acres":70,"netAcres":70,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":70000,"infraTotalCost":0,"totalCost":70000},
+{"tractId":"LA123-19N10E1-05","landowner":"ADAM R. PLUNKETT","address":"4270 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":23,"netAcres":23,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":23000,"infraTotalCost":0,"totalCost":23000},
+{"tractId":"LA123-19N10E1-06","landowner":"FARMLAND RESERVE, INC.","address":"60 EAST SOUTH TEMPLE, STE 1600","city":"SALT LAKE CITY","state":"UT","zip":"84111","county":"WEST","mailedDate":"2026-08-06","broker":"IAN MCCLELLAND","interest":1,"acres":20.71,"netAcres":20.71,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":20714.5,"infraTotalCost":0,"totalCost":20714.5},
+{"tractId":"LA123-19N10E1-07","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":20.77,"netAcres":20.77,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":20774.56,"infraTotalCost":0,"totalCost":20774.56},
+{"tractId":"LA123-19N10E1-08","landowner":"FREDERICK LAMAR AND NORA SHAY HALE","address":"5898 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"IAN MCCLELLAND","interest":1,"acres":3,"netAcres":3,"netFootage":196.91,"netRods":11.93,"pipeCost":5967.0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":3000,"infraTotalCost":5967.0,"totalCost":8967.0},
+{"tractId":"LA123-19N10E1-09","landowner":"WEST CARROLL POLICE JURY","address":"P. O. BOX 630","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"DO NOT MAIL","broker":"CRAIG PUGLIESE","interest":1,"acres":2,"netAcres":2,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2000,"infraTotalCost":0,"totalCost":2000},
+{"tractId":"LA123-19N10E11-01","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":422.02,"netAcres":422.02,"netFootage":7457.72,"netRods":451.98,"pipeCost":225991.66,"iwWellCount":1,"iwWellCost":1000,"obsWellCount":2.0,"obsWellCost":1000,"rectifierSite":"Y","rectifierCost":500,"surfaceSiteCost":0,"bonusPayment":422019.56,"infraTotalCost":228491.66,"totalCost":650511.22},
+{"tractId":"LA123-19N10E11-02","landowner":"COUNCILL INVESTMENTS GROUP, LLC","address":"545 CEDAR CLUB CIRCLE","city":"CHAPEL HILL","state":"NC","zip":"27517","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":165.45,"netAcres":27.57,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":27575.0,"infraTotalCost":0,"totalCost":27575.0},
+{"tractId":"LA123-19N10E11-02","landowner":"HALE HOUNDS, INC.","address":"2606 OLD DELHI RD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":165.45,"netAcres":82.72,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":82725.0,"infraTotalCost":0,"totalCost":82725.0},
+{"tractId":"LA123-19N10E11-02","landowner":"MARTSON LAND AND MINERALS, LLC","address":"1 GROVE ISLAND DRIVE, UNIT 1403","city":"MIAMI","state":"FL","zip":"33133","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":165.45,"netAcres":27.57,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":27575.0,"infraTotalCost":0,"totalCost":27575.0},
+{"tractId":"LA123-19N10E11-02","landowner":"SWALLOW HARBOR, LLC","address":"P. O. BOX 297","city":"CHARLESTON","state":"SC","zip":"29402","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":165.45,"netAcres":27.57,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":27575.0,"infraTotalCost":0,"totalCost":27575.0},
+{"tractId":"LA123-19N10E11-03","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"LARRY BERTRAND","interest":1,"acres":30.68,"netAcres":30.68,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":30676.54,"infraTotalCost":0,"totalCost":30676.54},
+{"tractId":"LA123-19N10E11-04","landowner":"GREGORY ALLAN AND KIMBERLY LYNN FORSSE","address":"6114 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"IAN MCCLELLAND","interest":1,"acres":2.43,"netAcres":2.43,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2430,"infraTotalCost":0,"totalCost":2430},
+{"tractId":"LA123-19N10E12-03","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"LARRY BERTRAND","interest":1,"acres":45.33,"netAcres":45.33,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":45325.2,"infraTotalCost":0,"totalCost":45325.2},
+{"tractId":"LA123-19N10E12-04","landowner":"COUNCILL INVESTMENTS GROUP, LLC","address":"545 CEDAR CLUB CIRCLE","city":"CHAPEL HILL","state":"NC","zip":"27517","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":216.3,"netAcres":36.05,"netFootage":549.89,"netRods":33.33,"pipeCost":16663.36,"iwWellCount":3.0,"iwWellCost":500.0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":36050.63,"infraTotalCost":17246.69,"totalCost":53297.32},
+{"tractId":"LA123-19N10E12-04","landowner":"HALE HOUNDS, INC.","address":"2606 OLD DELHI RD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":216.3,"netAcres":108.15,"netFootage":1649.67,"netRods":99.98,"pipeCost":49990.08,"iwWellCount":3.0,"iwWellCost":1500,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":250,"surfaceSiteCost":0,"bonusPayment":108151.88,"infraTotalCost":51740.08,"totalCost":159891.95},
+{"tractId":"LA123-19N10E12-04","landowner":"MARTSON LAND AND MINERALS, LLC","address":"1 GROVE ISLAND DRIVE, UNIT 1403","city":"MIAMI","state":"FL","zip":"33133","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":216.3,"netAcres":36.05,"netFootage":549.89,"netRods":33.33,"pipeCost":16663.36,"iwWellCount":3.0,"iwWellCost":500.0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":36050.62,"infraTotalCost":17246.69,"totalCost":53297.31},
+{"tractId":"LA123-19N10E12-04","landowner":"SWALLOW HARBOR, LLC","address":"P. O. BOX 297","city":"CHARLESTON","state":"SC","zip":"29402","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":216.3,"netAcres":36.05,"netFootage":549.89,"netRods":33.33,"pipeCost":16663.36,"iwWellCount":3.0,"iwWellCost":500.0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":36050.63,"infraTotalCost":17246.69,"totalCost":53297.32},
+{"tractId":"LA123-19N10E12-05","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":112.7,"netAcres":112.7,"netFootage":8316.02,"netRods":504.0,"pipeCost":252000.54,"iwWellCount":3,"iwWellCost":3000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":112696.83,"infraTotalCost":255000.54,"totalCost":367697.37},
+{"tractId":"LA123-19N10E13-02","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"LARRY BERTRAND","interest":1,"acres":140.33,"netAcres":140.33,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":140330.17,"infraTotalCost":0,"totalCost":140330.17},
+{"tractId":"LA123-19N10E13-03","landowner":"B-J FARMS, INC.","address":"7201 CHLOE DRIVE","city":"STERLINGTON","state":"LA","zip":"71280","county":"WEST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":10,"netAcres":10,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":10000,"infraTotalCost":0,"totalCost":10000},
+{"tractId":"LA123-19N10E13-04","landowner":"STATE OF LOUISIANA","address":"P. O. BOX 94095","city":"BATON ROUGE","state":"LA","zip":"70804","county":"WEST","mailedDate":"DO NOT MAIL","broker":"CRAIG PUGLIESE","interest":1,"acres":16.37,"netAcres":16.37,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":16365.54,"infraTotalCost":0,"totalCost":16365.54},
+{"tractId":"LA123-19N10E13-05","landowner":"STEPHEN PAUL RICE","address":"26701 OLIVER WHEAT ROAD","city":"LIVINGSTON","state":"LA","zip":"70754","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":3.86,"netAcres":3.86,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":3860.17,"infraTotalCost":0,"totalCost":3860.17},
+{"tractId":"LA123-19N10E13-06","landowner":"RODNEY LEE SMITHERMAN","address":"351 HUEY RD.","city":"LAKE PROVIDENCE","state":"LA","zip":"71254","county":"WEST","mailedDate":"2026-08-26","broker":"BOB DERISE","interest":1,"acres":4,"netAcres":4,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4000,"infraTotalCost":0,"totalCost":4000},
+{"tractId":"LA123-19N10E13-07","landowner":"OLD PECAN RESOURCES, LLC","address":"7239 MIMOSA LN.","city":"DALLAS","state":"TX","zip":"75230","county":"WEST","mailedDate":"2026-09-09","broker":"IAN MCCLELLAND","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"CORINNE CALDER LEWIS","address":"7239 MIMOSA LN.","city":"DALLAS","state":"TX","zip":"75230","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0,"acres":0.4,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E13-07","landowner":"DEBORAH KELLY SLAUGHTER","address":"535 ONEONTA STREET","city":"SHREVEPORT","state":"LA","zip":"71106","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"EDWIN ROY KELLY","address":"2709 WOLFF DRIVE","city":"ARLINGTON","state":"TX","zip":"76015","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"FRANCIS STEPHEN KELLY, IV, C/O KATHERINE KELLY","address":"61 SPRING STREET","city":"HOPE VALLEY","state":"RI","zip":"02832","county":"WEST","mailedDate":"2026-08-28","broker":"IAN MCCLELLAND","interest":0.022222,"acres":0.4,"netAcres":0.01,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":8.88,"infraTotalCost":0,"totalCost":8.88},
+{"tractId":"LA123-19N10E13-07","landowner":"KATHERINE KELLY","address":"61 SPRING STREET","city":"HOPE VALLEY","state":"RI","zip":"02832","county":"WEST","mailedDate":"2026-08-28","broker":"IAN MCCLELLAND","interest":0.022222,"acres":0.4,"netAcres":0.01,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":8.88,"infraTotalCost":0,"totalCost":8.88},
+{"tractId":"LA123-19N10E13-07","landowner":"ERIN KELLY KRAJEWSKI HARTZELL","address":"1827 MANZANITA DRIVE","city":"CONCORD","state":"CA","zip":"94519","county":"WEST","mailedDate":"2026-08-28","broker":"IAN MCCLELLAND","interest":0.022222,"acres":0.4,"netAcres":0.01,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":8.88,"infraTotalCost":0,"totalCost":8.88},
+{"tractId":"LA123-19N10E13-07","landowner":"F. STEPHEN KELLY, III, DECEASED","address":"P.O. BOX 381","city":"MONTGOMERY","state":"TX","zip":"77356","county":"WEST","mailedDate":"DECEASED, NEW IOL SENT TO HEIRS","broker":"IAN MCCLELLAND","interest":0,"acres":0.4,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E13-07","landowner":"DEBORAH ANNE HAWKINS","address":"31 DUBOIS ST, UNIT 1088","city":"ROXBURY","state":"MA","zip":"02119","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"JENNIFER MARIE HAWKINS","address":"6281 FISKE ROAD","city":"BARTLETT","state":"TN","zip":"38135","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"LOIS ANNE HAWKINS KEITH","address":"12727 209TH PL NE","city":"WOODINVILLE","state":"WA","zip":"98077","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"HENRY LLOYD HAWKINS, III","address":"507 IONA STREET","city":"METAIRIE","state":"LA","zip":"70005","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"LAURA GENEVIEVE HAWKINS","address":"203 BRIAR OAKS CV","city":"HOUSTON","state":"TX","zip":"77056","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E13-07","landowner":"GERTRUDE WAGNER HAWKINS, DECEASED","address":null,"city":null,"state":null,"zip":"","county":"WEST","mailedDate":"DECEASED, NEW IOL SENT TO HEIRS","broker":"IAN MCCLELLAND","interest":0,"acres":0.4,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E13-07","landowner":"H. LLOYD AND LOIS HAWKINS","address":"26 NASSAU DR.","city":"METAIRIE","state":"LA","zip":"70005","county":"WEST","mailedDate":"2026-08-26","broker":"IAN MCCLELLAND","interest":0.333333,"acres":0.4,"netAcres":0.13,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":133.25,"infraTotalCost":0,"totalCost":133.25},
+{"tractId":"LA123-19N10E13-07","landowner":"MARY KELLY WEAR","address":"4912 POST OAK TIMBER DRIVE","city":"HOUSTON","state":"TX","zip":"77056","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.066667,"acres":0.4,"netAcres":0.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26.65,"infraTotalCost":0,"totalCost":26.65},
+{"tractId":"LA123-19N10E14-01","landowner":"LLOYD E NEAL, INC.","address":"6208 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-06","broker":"LARRY BERTRAND","interest":1,"acres":22.71,"netAcres":22.71,"netFootage":1209.14,"netRods":73.28,"pipeCost":36640.62,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":22714.2,"infraTotalCost":37640.62,"totalCost":60354.82},
+{"tractId":"LA123-19N10E14-02","landowner":"4-M LAND, LLC","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"SCOTT BROUSSARD","interest":1,"acres":71.07,"netAcres":71.07,"netFootage":1271.95,"netRods":77.09,"pipeCost":38544.02,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":71068.39,"infraTotalCost":39544.02,"totalCost":110612.41},
+{"tractId":"LA123-19N10E14-02-SS","landowner":"4-M LAND, LLC","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"SCOTT BROUSSARD","interest":1,"acres":0.75,"netAcres":0.75,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":1496.32,"bonusPayment":0,"infraTotalCost":1496.32,"totalCost":1496.32},
+{"tractId":"LA123-19N10E14-03","landowner":"COUNCILL INVESTMENTS GROUP, LLC","address":"545 CEDAR CLUB CIRCLE","city":"CHAPEL HILL","state":"NC","zip":"27517","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":215.0,"netAcres":35.83,"netFootage":807.79,"netRods":48.96,"pipeCost":24478.59,"iwWellCount":5.0,"iwWellCost":833.33,"obsWellCount":4.0,"obsWellCost":333.33,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":35833.53,"infraTotalCost":25645.26,"totalCost":61478.78},
+{"tractId":"LA123-19N10E14-03","landowner":"HALE HOUNDS, INC.","address":"2606 OLD DELHI RD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":215.0,"netAcres":107.5,"netFootage":2423.38,"netRods":146.87,"pipeCost":73435.77,"iwWellCount":5.0,"iwWellCost":2500,"obsWellCount":4.0,"obsWellCost":1000,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":107500.57,"infraTotalCost":76935.77,"totalCost":184436.34},
+{"tractId":"LA123-19N10E14-03","landowner":"MARTSON LAND AND MINERALS, LLC","address":"1 GROVE ISLAND DRIVE, UNIT 1403","city":"MIAMI","state":"FL","zip":"33133","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":215.0,"netAcres":35.83,"netFootage":807.79,"netRods":48.96,"pipeCost":24478.59,"iwWellCount":5.0,"iwWellCost":833.33,"obsWellCount":4.0,"obsWellCost":333.33,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":35833.52,"infraTotalCost":25645.26,"totalCost":61478.78},
+{"tractId":"LA123-19N10E14-03","landowner":"SWALLOW HARBOR, LLC","address":"P. O. BOX 297","city":"CHARLESTON","state":"SC","zip":"29402","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":215.0,"netAcres":35.83,"netFootage":807.79,"netRods":48.96,"pipeCost":24478.59,"iwWellCount":5.0,"iwWellCost":833.33,"obsWellCount":4.0,"obsWellCost":333.33,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":35833.53,"infraTotalCost":25645.26,"totalCost":61478.78},
+{"tractId":"LA123-19N10E14-04","landowner":"LA OFFICE OF STATE PARKS, RECREATION AND TOURISM","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"LARRY BERTRAND","interest":1,"acres":186.08,"netAcres":186.08,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":186078.09,"infraTotalCost":0,"totalCost":186078.09},
+{"tractId":"LA123-19N10E14-05","landowner":"JASON L. HALE","address":"114 MACON DRIVE","city":"DELHI","state":"LA","zip":"71232","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":32.8,"netAcres":32.8,"netFootage":3159.98,"netRods":191.51,"pipeCost":95756.89,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":500,"surfaceSiteCost":0,"bonusPayment":32799.39,"infraTotalCost":97256.89,"totalCost":130056.29},
+{"tractId":"LA123-19N10E14-06","landowner":"STEPHEN PAUL RICE","address":"26701 OLIVER WHEAT ROAD","city":"LIVINGSTON","state":"LA","zip":"70754","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":25.9,"netAcres":25.9,"netFootage":320.69,"netRods":19.44,"pipeCost":9717.82,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":25901.51,"infraTotalCost":9717.82,"totalCost":35619.33},
+{"tractId":"LA123-19N10E14-07","landowner":"STATE OF LOUISIANA","address":"P. O. BOX 94095","city":"BATON ROUGE","state":"LA","zip":"70804","county":"WEST","mailedDate":"DO NOT MAIL","broker":"CRAIG PUGLIESE","interest":1,"acres":50.63,"netAcres":50.63,"netFootage":1738.59,"netRods":105.37,"pipeCost":52684.67,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":50634.46,"infraTotalCost":54184.67,"totalCost":104819.13},
+{"tractId":"LA123-19N10E14-08","landowner":"OLD PECAN RESOURCES, LLC","address":"7239 MIMOSA LN.","city":"DALLAS","state":"TX","zip":"75230","county":"WEST","mailedDate":"2026-09-09","broker":"IAN MCCLELLAND","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"CORINNE CALDER LEWIS","address":"7239 MIMOSA LN.","city":"DALLAS","state":"TX","zip":"75230","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0,"acres":3.6,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E14-08","landowner":"DEBORAH KELLY SLAUGHTER","address":"535 ONEONTA STREET","city":"SHREVEPORT","state":"LA","zip":"71106","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"EDWIN ROY KELLY","address":"2709 WOLFF DRIVE","city":"ARLINGTON","state":"TX","zip":"76015","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"FRANCIS STEPHEN KELLY, IV, C/O KATHERINE KELLY","address":"61 SPRING STREET","city":"HOPE VALLEY","state":"RI","zip":"02832","county":"WEST","mailedDate":"2026-08-28","broker":"IAN MCCLELLAND","interest":0.022222,"acres":3.6,"netAcres":0.08,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":80.01,"infraTotalCost":0,"totalCost":80.01},
+{"tractId":"LA123-19N10E14-08","landowner":"KATHERINE KELLY","address":"61 SPRING STREET","city":"HOPE VALLEY","state":"RI","zip":"02832","county":"WEST","mailedDate":"2026-08-28","broker":"IAN MCCLELLAND","interest":0.022222,"acres":3.6,"netAcres":0.08,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":80.01,"infraTotalCost":0,"totalCost":80.01},
+{"tractId":"LA123-19N10E14-08","landowner":"ERIN KELLY KRAJEWSKI HARTZELL","address":"1827 MANZANITA DRIVE","city":"CONCORD","state":"CA","zip":"94519","county":"WEST","mailedDate":"2026-08-28","broker":"IAN MCCLELLAND","interest":0.022222,"acres":3.6,"netAcres":0.08,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":80.01,"infraTotalCost":0,"totalCost":80.01},
+{"tractId":"LA123-19N10E14-08","landowner":"F. STEPHEN KELLY, III, DECEASED","address":"P.O. BOX 381","city":"MONTGOMERY","state":"TX","zip":"77356","county":"WEST","mailedDate":"DECEASED, NEW IOL SENT TO HEIRS","broker":"IAN MCCLELLAND","interest":0,"acres":3.6,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E14-08","landowner":"DEBORAH ANNE HAWKINS","address":"31 DUBOIS ST, UNIT 1088","city":"ROXBURY","state":"MA","zip":"02119","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"JENNIFER MARIE HAWKINS","address":"6281 FISKE ROAD","city":"BARTLETT","state":"TN","zip":"38135","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"LOIS ANNE HAWKINS KEITH","address":"12727 209TH PL NE","city":"WOODINVILLE","state":"WA","zip":"98077","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"HENRY LLOYD HAWKINS, III","address":"507 IONA STREET","city":"METAIRIE","state":"LA","zip":"70005","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"LAURA GENEVIEVE HAWKINS","address":"203 BRIAR OAKS CV","city":"HOUSTON","state":"TX","zip":"77056","county":"WEST","mailedDate":"2026-09-03","broker":"ALVIN LASSEIGNE","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E14-08","landowner":"GERTRUDE WAGNER HAWKINS, DECEASED","address":null,"city":null,"state":null,"zip":"","county":"WEST","mailedDate":"DECEASED, NEW IOL SENT TO HEIRS","broker":"IAN MCCLELLAND","interest":0,"acres":3.6,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E14-08","landowner":"H. LLOYD AND LOIS HAWKINS","address":"26 NASSAU DR.","city":"METAIRIE","state":"LA","zip":"70005","county":"WEST","mailedDate":"2026-08-26","broker":"IAN MCCLELLAND","interest":0.333333,"acres":3.6,"netAcres":1.2,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1200.08,"infraTotalCost":0,"totalCost":1200.08},
+{"tractId":"LA123-19N10E14-08","landowner":"MARY KELLY WEAR","address":"4912 POST OAK TIMBER DRIVE","city":"HOUSTON","state":"TX","zip":"77056","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.066667,"acres":3.6,"netAcres":0.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":240.02,"infraTotalCost":0,"totalCost":240.02},
+{"tractId":"LA123-19N10E15-01","landowner":"JEFFERY ALAN AND ELIZABETH RUSSELL SIMMONS","address":"226 BORDEN ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":163.5,"netAcres":163.5,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":163502.09,"infraTotalCost":0,"totalCost":163502.09},
+{"tractId":"LA123-19N10E15-02","landowner":"PAUL C. GOWAN LAND TRUST","address":"1015 BARREL SPRINGS HOLLOW ROAD","city":"FRANKLIN","state":"TN","zip":"37069","county":"WEST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":166.53,"netAcres":166.53,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":166527.17,"infraTotalCost":0,"totalCost":166527.17},
+{"tractId":"LA123-19N10E15-03","landowner":"LLOYD E NEAL, INC.","address":"6208 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-06","broker":"LARRY BERTRAND","interest":1,"acres":46.84,"netAcres":46.84,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":46835.12,"infraTotalCost":0,"totalCost":46835.12},
+{"tractId":"LA123-19N10E15-04","landowner":"STEPHEN PAUL RICE","address":"26701 OLIVER WHEAT ROAD","city":"LIVINGSTON","state":"LA","zip":"70754","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":15.24,"netAcres":15.24,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":15238.32,"infraTotalCost":0,"totalCost":15238.32},
+{"tractId":"LA123-19N10E15-05","landowner":"JASON L. HALE","address":"114 MACON DRIVE","city":"DELHI","state":"LA","zip":"71232","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":43.2,"netAcres":43.2,"netFootage":1428.03,"netRods":86.55,"pipeCost":43273.54,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":43200.61,"infraTotalCost":43273.54,"totalCost":86474.15},
+{"tractId":"LA123-19N10E15-06","landowner":"COUNCILL INVESTMENTS GROUP, LLC","address":"545 CEDAR CLUB CIRCLE","city":"CHAPEL HILL","state":"NC","zip":"27517","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":203.53,"netAcres":33.92,"netFootage":649.82,"netRods":39.38,"pipeCost":19691.5,"iwWellCount":4.0,"iwWellCost":666.67,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":33922.39,"infraTotalCost":20441.5,"totalCost":54363.89},
+{"tractId":"LA123-19N10E15-06","landowner":"HALE HOUNDS, INC.","address":"2606 OLD DELHI RD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":203.53,"netAcres":101.77,"netFootage":1949.46,"netRods":118.15,"pipeCost":59074.49,"iwWellCount":4.0,"iwWellCost":2000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":250,"surfaceSiteCost":0,"bonusPayment":101767.18,"infraTotalCost":61324.49,"totalCost":163091.66},
+{"tractId":"LA123-19N10E15-06","landowner":"MARTSON LAND AND MINERALS, LLC","address":"1 GROVE ISLAND DRIVE, UNIT 1403","city":"MIAMI","state":"FL","zip":"33133","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":203.53,"netAcres":33.92,"netFootage":649.82,"netRods":39.38,"pipeCost":19691.49,"iwWellCount":4.0,"iwWellCost":666.67,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":33922.39,"infraTotalCost":20441.49,"totalCost":54363.89},
+{"tractId":"LA123-19N10E15-06","landowner":"SWALLOW HARBOR, LLC","address":"P. O. BOX 297","city":"CHARLESTON","state":"SC","zip":"29402","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":203.53,"netAcres":33.92,"netFootage":649.82,"netRods":39.38,"pipeCost":19691.5,"iwWellCount":4.0,"iwWellCost":666.67,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":33922.39,"infraTotalCost":20441.5,"totalCost":54363.89},
+{"tractId":"LA123-19N10E16-01","landowner":"JEFFERY ALAN AND ELIZABETH RUSSELL SIMMONS","address":"226 BORDEN ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":74.5,"netAcres":74.5,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":74497.91,"infraTotalCost":0,"totalCost":74497.91},
+{"tractId":"LA123-19N10E16-02","landowner":"PAUL C. GOWAN LAND TRUST","address":"1015 BARREL SPRINGS HOLLOW ROAD","city":"FRANKLIN","state":"TN","zip":"37069","county":"WEST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":157.72,"netAcres":157.72,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":157718.75,"infraTotalCost":500,"totalCost":158218.75},
+{"tractId":"LA123-19N10E16-03","landowner":"HEZ NEWTON ELKINS","address":"280 EAGLES NEST DRIVE","city":"FARMERVILLE","state":"LA","zip":"71241","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":80,"netAcres":80,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":80000,"infraTotalCost":0,"totalCost":80000},
+{"tractId":"LA123-19N10E16-04","landowner":"AMBER NICOLE WYATT","address":"510 GOWAN ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":2,"netAcres":2,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2000,"infraTotalCost":0,"totalCost":2000},
+{"tractId":"LA123-19N10E2-01","landowner":"L.L. GOLSON, INC.","address":"2534 HIGHWAY 514","city":"COUSHATTA","state":"LA","zip":"71019","county":"WEST","mailedDate":"2026-08-26","broker":"LARRY BERTRAND","interest":1,"acres":55,"netAcres":55,"netFootage":637.83,"netRods":38.66,"pipeCost":19328.05,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":55000,"infraTotalCost":19828.05,"totalCost":74828.05},
+{"tractId":"LA123-19N10E2-02","landowner":"ADAM R. PLUNKETT","address":"4270 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":62,"netAcres":62,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":62000,"infraTotalCost":0,"totalCost":62000},
+{"tractId":"LA123-19N10E2-03","landowner":"JOHN WAYNE AND BONNIE HOLLEY GREGORY","address":"272 COUNTY LANE","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":65,"netAcres":65,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":65000,"infraTotalCost":0,"totalCost":65000},
+{"tractId":"LA123-19N10E2-04","landowner":"PRINE FAMILY TRUST","address":"2450 WICHERSHAM LANE # 201","city":"AUSTIN","state":"TX","zip":"78741","county":"WEST","mailedDate":"2026-08-10","broker":"SCOTT BROUSSARD","interest":1,"acres":67.4,"netAcres":67.4,"netFootage":2444.61,"netRods":148.16,"pipeCost":74079.03,"iwWellCount":2.0,"iwWellCost":2000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":67400,"infraTotalCost":76079.03,"totalCost":143479.03},
+{"tractId":"LA123-19N10E2-05","landowner":"TOMMY W. AND TAMMY C. HALE","address":"919 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"CRAIG PUGLIESE","interest":1,"acres":39,"netAcres":39,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":39000,"infraTotalCost":0,"totalCost":39000},
+{"tractId":"LA123-19N10E2-06","landowner":"ROBERT ANDREW BRANDON HALE","address":"2446 CLEARLAKE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"BOB DERISE","interest":1,"acres":6,"netAcres":6,"netFootage":495.86,"netRods":30.05,"pipeCost":15025.95,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6000,"infraTotalCost":15025.95,"totalCost":21025.95},
+{"tractId":"LA123-19N10E2-07","landowner":"FARMLAND RESERVE, INC.","address":"60 EAST SOUTH TEMPLE, STE 1600","city":"SALT LAKE CITY","state":"UT","zip":"84111","county":"WEST","mailedDate":"2026-08-06","broker":"IAN MCCLELLAND","interest":1,"acres":117.29,"netAcres":117.29,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":117285.5,"infraTotalCost":0,"totalCost":117285.5},
+{"tractId":"LA123-19N10E2-08","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":99.23,"netAcres":99.23,"netFootage":136.59,"netRods":8.28,"pipeCost":4139.07,"iwWellCount":1,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":99225.44,"infraTotalCost":5139.07,"totalCost":104364.51},
+{"tractId":"LA123-19N10E2-09","landowner":"FREDERICK LAMAR AND NORA SHAY HALE","address":"5898 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"IAN MCCLELLAND","interest":1,"acres":41,"netAcres":41,"netFootage":964.13,"netRods":58.43,"pipeCost":29216.11,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":41000,"infraTotalCost":29216.11,"totalCost":70216.11},
+{"tractId":"LA123-19N10E2-10","landowner":"GRAYSON FORREST AND HANNAH ELISABETH PARKER","address":"5952 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"IAN MCCLELLAND","interest":1,"acres":11.88,"netAcres":11.88,"netFootage":269.98,"netRods":16.36,"pipeCost":8181.09,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":11880,"infraTotalCost":8181.09,"totalCost":20061.09},
+{"tractId":"LA123-19N10E2-11","landowner":"JOHN SPENCER JOHNSTON","address":"921 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":12,"netAcres":12,"netFootage":144.51,"netRods":8.76,"pipeCost":4379.0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":12000,"infraTotalCost":4379.0,"totalCost":16379.0},
+{"tractId":"LA123-19N10E2-12","landowner":"TAMMY JOHNSTON","address":"9075 HEBER SPRINGS ROAD N","city":"CONCORD","state":"AR","zip":"72523","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":44,"netAcres":44,"netFootage":1694.88,"netRods":102.72,"pipeCost":51360.03,"iwWellCount":1.0,"iwWellCost":1000,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":500,"surfaceSiteCost":0,"bonusPayment":44000,"infraTotalCost":52860.03,"totalCost":96860.03},
+{"tractId":"LA123-19N10E2-13","landowner":"JOHN SPENCER AND TAMMY HERRINGTON JOHNSTON","address":"921 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":27,"netAcres":27,"netFootage":883.97,"netRods":53.57,"pipeCost":26787.04,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":27000,"infraTotalCost":27287.04,"totalCost":54287.04},
+{"tractId":"LA123-19N10E2-14","landowner":"AGNES HALE GORDON","address":"P. O. BOX 125","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"ALFRED L. HALE","address":"2434 HWY 606","city":"ST. JOSEPH","state":"LA","zip":"71366","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"DAVID HALE","address":"2262 HWY 15","city":"RAYVILLE","state":"LA","zip":"71269","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.018182,"acres":1,"netAcres":0.02,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":18.18,"infraTotalCost":0,"totalCost":18.18},
+{"tractId":"LA123-19N10E2-14","landowner":"DELLIE HALE SOUTHERN","address":"5198 LINTON CUTOFF RD","city":"BENTON","state":"LA","zip":"71006","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"JEANETTE HALE CARROLL","address":"114 BLANCHARD ROAD","city":"LAKE CHARLES","state":"LA","zip":"70607","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.018182,"acres":1,"netAcres":0.02,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":18.18,"infraTotalCost":0,"totalCost":18.18},
+{"tractId":"LA123-19N10E2-14","landowner":"JOHN MITCHELL HALE","address":"101 KAREN STREET","city":"ST. JOSEPH","state":"LA","zip":"71366","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"MARIE HALE COBURN, DECEASED (MORE RESEARCH NEEDED AND NEEDS NEW IOL)","address":"491 RIDDLE LANE, LOT 41","city":"LAKE PROVIDENCE","state":"LA","zip":"71254","county":"WEST","mailedDate":"DECEASED, RESEARCH NEEDED, NEW IOL","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"MARY ALICE HALE HAWKINS","address":"118 MINDY DRIVE","city":"WAYNESBORO","state":"TN","zip":"38485","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"MICHAEL HALE","address":"121 NEWELLTON CLUB ROAD","city":"NEWELLTON","state":"LA","zip":"71357","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.018182,"acres":1,"netAcres":0.02,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":18.18,"infraTotalCost":0,"totalCost":18.18},
+{"tractId":"LA123-19N10E2-14","landowner":"MILDRED HALE STANFIELD, DECEASED (MORE RESEARCH NEEDED AND NEEDS NEW IOL)","address":"3898 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DECEASED, RESEARCH NEEDED, NEW IOL","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"MYRTLE HALE WELCH","address":"1710 SAN SABA STREET","city":"BOSSIER CITY","state":"LA","zip":"71112","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"REBECCA HALE BROWN","address":"2798 KILPATRICK ROAD","city":"EROS","state":"LA","zip":"71238","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.018182,"acres":1,"netAcres":0.02,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":18.18,"infraTotalCost":0,"totalCost":18.18},
+{"tractId":"LA123-19N10E2-14","landowner":"RUBY HALE LINECUM, DECEASED (MORE RESEARCH NEEDED AND NEEDS NEW IOL)","address":"1611 WELLERMAN ROAD","city":"WEST MONROE","state":"LA","zip":"71291","county":"WEST","mailedDate":"DECEASED, RESEARCH NEEDED, NEW IOL","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-14","landowner":"TIMOTHY HALE","address":"161 COWBOY LANE, LOT 27","city":"CALHOUN","state":"LA","zip":"71225","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.018182,"acres":1,"netAcres":0.02,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":18.18,"infraTotalCost":0,"totalCost":18.18},
+{"tractId":"LA123-19N10E2-14","landowner":"WALTER \"W.T.\" HALE","address":"201 CROSSTOWN DRIVE","city":"PEACHTREE CITY","state":"GA","zip":"30269","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.090909,"acres":1,"netAcres":0.09,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90.91,"infraTotalCost":0,"totalCost":90.91},
+{"tractId":"LA123-19N10E2-15","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":0.9,"netAcres":0.9,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":900,"infraTotalCost":0,"totalCost":900},
+{"tractId":"LA123-19N10E22-01","landowner":"LLOYD E NEAL, INC.","address":"6208 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-06","broker":"LARRY BERTRAND","interest":1,"acres":168.6,"netAcres":168.6,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":168603.37,"infraTotalCost":0,"totalCost":168603.37},
+{"tractId":"LA123-19N10E22-02","landowner":"DUCKMOSS, LLC","address":"1337 LAKEWOOD POINT","city":"BOSSIER CITY","state":"LA","zip":"71111","county":"WEST","mailedDate":"2026-08-06","broker":"IAN MCCLELLAND","interest":1,"acres":160,"netAcres":160,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":160000,"infraTotalCost":0,"totalCost":160000},
+{"tractId":"LA123-19N10E22-03","landowner":"BONNIE KATE KITCHEN, NAKED OWNER, SUBJECT TO THE USUFRUCT OF BARBARA CAROLYN Y. BISHOP","address":"729 OLD LANDING ROAD","city":"COVINGTON","state":"LA","zip":"70433","county":"WEST","mailedDate":"2026-08-11","broker":"LARRY BERTRAND","interest":0,"acres":30,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E22-03","landowner":"CAROLYN B. FREDERICK, NAKED OWNER, SUBJECT TO THE USUFRUCT OF BARBARA CAROLYN Y. BISHOP","address":"514 BEVERLY DRIVE","city":"LAFAYETTE","state":"LA","zip":"70503","county":"WEST","mailedDate":"2026-08-11","broker":"LARRY BERTRAND","interest":0,"acres":30,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E22-03","landowner":"CAROLYN Y. BISHOP, USUFRUCTARY","address":"514 BEVERLY DRIVE","city":"LAFAYETTE","state":"LA","zip":"70503","county":"WEST","mailedDate":"2026-08-11","broker":"LARRY BERTRAND","interest":1,"acres":30,"netAcres":30,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":30000,"infraTotalCost":0,"totalCost":30000},
+{"tractId":"LA123-19N10E22-03","landowner":"CHERYL B. MAYRONNE, NAKED OWNER, SUBJECT TO THE USUFRUCT OF BARBARA CAROLYN Y. BISHOP","address":"420 COUNTRY MEADOW DRIVE","city":"COVINGTON","state":"LA","zip":"70435","county":"WEST","mailedDate":"2026-08-11","broker":"LARRY BERTRAND","interest":0,"acres":30,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E22-04","landowner":"MARK E. AND REBECCA S. MILLER","address":"P. O. BOX 644","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":90.21,"netAcres":90.21,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":90208.17,"infraTotalCost":0,"totalCost":90208.17},
+{"tractId":"LA123-19N10E22-05","landowner":"SON OF DAVID INVESTMENTS, LLC","address":"107 MARY BETH LANE","city":"TALLULAH","state":"LA","zip":"71282","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E23-01","landowner":"LLOYD E NEAL, INC.","address":"6208 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-06","broker":"LARRY BERTRAND","interest":1,"acres":83.75,"netAcres":83.75,"netFootage":1914.74,"netRods":116.05,"pipeCost":58022.53,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":83745.17,"infraTotalCost":58522.53,"totalCost":142267.69},
+{"tractId":"LA123-19N10E23-02","landowner":"MARK E. AND REBECCA S. MILLER","address":"P. O. BOX 644","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":41.35,"netAcres":41.35,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":41351.83,"infraTotalCost":0,"totalCost":41351.83},
+{"tractId":"LA123-19N10E23-03","landowner":"LLOYD E NEAL, INC.","address":"6208 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-06","broker":"LARRY BERTRAND","interest":1,"acres":98.06,"netAcres":98.06,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":98062.14,"infraTotalCost":0,"totalCost":98062.14},
+{"tractId":"LA123-19N10E23-04","landowner":"DONALD M. RALEY","address":"P. O. BOX 729","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.5,"acres":111.61,"netAcres":55.8,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":55804.93,"infraTotalCost":0,"totalCost":55804.93},
+{"tractId":"LA123-19N10E23-04","landowner":"DONDOROSA FARMS, LLC","address":"6380 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":111.61,"netAcres":55.8,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":55804.93,"infraTotalCost":0,"totalCost":55804.93},
+{"tractId":"LA123-19N10E23-05","landowner":"4-M LAND, LLC","address":"P. O. BOX 276","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"DO NOT MAIL","broker":"SCOTT BROUSSARD","interest":1,"acres":231.19,"netAcres":231.19,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":231194.45,"infraTotalCost":0,"totalCost":231194.45},
+{"tractId":"LA123-19N10E23-06","landowner":"NORENE SELLERS","address":"6148 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-04","broker":"BOB DERISE","interest":1,"acres":11.58,"netAcres":11.58,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":11584,"infraTotalCost":0,"totalCost":11584},
+{"tractId":"LA123-19N10E23-07","landowner":"ALLEN LAMAR AND MARIAN NORENE WALLER FREY","address":"6080 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"SCOTT BROUSSARD","interest":1,"acres":3,"netAcres":3,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":3000,"infraTotalCost":0,"totalCost":3000},
+{"tractId":"LA123-19N10E23-08","landowner":"WALNUT GROVE BAPTIST CHURCH","address":"6416 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":1.56,"netAcres":1.56,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1556,"infraTotalCost":0,"totalCost":1556},
+{"tractId":"LA123-19N10E23-09","landowner":"STEVEN L. AND CHRISTIE HALE BROWN","address":"5739 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"CRAIG PUGLIESE","interest":1,"acres":5.1,"netAcres":5.1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":5100,"infraTotalCost":0,"totalCost":5100},
+{"tractId":"LA123-19N10E23-10","landowner":"DAVID TODD MCVAY","address":"189 WALNUT GROVE LANE","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-04","broker":"IAN MCCLELLAND","interest":1,"acres":2.63,"netAcres":2.63,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2630,"infraTotalCost":0,"totalCost":2630},
+{"tractId":"LA123-19N10E23-11","landowner":"JASON M. HUDSPETH","address":"194 WALNUT GROVE LANE","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E23-12","landowner":"MARVIN DEAN LEATHERMAN","address":"181 SMITH ROAD","city":"LAKE PROVIDENCE","state":"LA","zip":"71254","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":2.59,"netAcres":2.59,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2590,"infraTotalCost":0,"totalCost":2590},
+{"tractId":"LA123-19N10E23-13","landowner":"WILLIAM H. AND DANA GAY PAYNE","address":"222 WALNUT GROVE LANE","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"CRAIG PUGLIESE","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E23-14","landowner":"MARTY A. AND MELISSA B. SIMMS","address":"265 DOGWOOD RIDGE ROAD","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":9.12,"netAcres":9.12,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":9119.76,"infraTotalCost":0,"totalCost":9119.76},
+{"tractId":"LA123-19N10E23-15","landowner":"WALTER DAVID AND HELEN CORLEY MCVAY","address":"7286 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"CRAIG PUGLIESE","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E23-16","landowner":"ADAM R. PLUNKETT","address":"4270 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":8.96,"netAcres":8.96,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":8957,"infraTotalCost":0,"totalCost":8957},
+{"tractId":"LA123-19N10E23-17","landowner":"RUSSELL AND CHERISH SIMMS MORRIS","address":"6346 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"BOB DERISE","interest":1,"acres":1.98,"netAcres":1.98,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1981.6,"infraTotalCost":0,"totalCost":1981.6},
+{"tractId":"LA123-19N10E23-18","landowner":"JAMES PAUL AND THERESA HERMAN MORGAN","address":"152 RUSK LANE","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":2,"netAcres":2,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2000,"infraTotalCost":0,"totalCost":2000},
+{"tractId":"LA123-19N10E23-19","landowner":"MARTY A. AND MELISSA B. SIMMS","address":"265 DOGWOOD RIDGE ROAD","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":1.03,"netAcres":1.03,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1031.84,"infraTotalCost":0,"totalCost":1031.84},
+{"tractId":"LA123-19N10E23-20","landowner":"MARK E. AND REBECCA S. MILLER","address":"P. O. BOX 644","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":16.8,"netAcres":16.8,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":16800,"infraTotalCost":0,"totalCost":16800},
+{"tractId":"LA123-19N10E23-21","landowner":"LOUISIANA DEPT OF TRANSPORATION & DEVELOPMENT","address":"P. O. BOX 94245","city":"BATON ROUGE","state":"LA","zip":"70804","county":"WEST","mailedDate":"DO NOT MAIL","broker":"LARRY BERTRAND","interest":1,"acres":7.14,"netAcres":7.14,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":7145,"infraTotalCost":0,"totalCost":7145},
+{"tractId":"LA123-19N10E23-22","landowner":"MARTY A. AND MELISSA B. SIMMS","address":"265 DOGWOOD RIDGE ROAD","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":14.26,"netAcres":14.26,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":14259.32,"infraTotalCost":0,"totalCost":14259.32},
+{"tractId":"LA123-19N10E24-02","landowner":"JAIME LYNN RUSK","address":"P. O. BOX 123","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.5,"acres":41.07,"netAcres":20.54,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":20535,"infraTotalCost":0,"totalCost":20535},
+{"tractId":"LA123-19N10E24-02","landowner":"JAMES KEITH RUSK","address":"7868 RED FOX DRIVE","city":"WEST CHESTER","state":"OH","zip":"45069","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.5,"acres":41.07,"netAcres":20.54,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":20535,"infraTotalCost":0,"totalCost":20535},
+{"tractId":"LA123-19N10E24-03","landowner":"JAMES PAUL AND THERESA HERMAN MORGAN","address":"152 RUSK LANE","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":4.1,"netAcres":4.1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4100,"infraTotalCost":0,"totalCost":4100},
+{"tractId":"LA123-19N10E25-01","landowner":"THE MACON CROSSING, LLC","address":"2606 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":27.66,"netAcres":27.66,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":27655.76,"infraTotalCost":0,"totalCost":27655.76},
+{"tractId":"LA123-19N10E26-01","landowner":"PAULA M. SKIPPER","address":"322 HWY 579","city":"DELHI","state":"LA","zip":"71232","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":76,"netAcres":76,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":76000,"infraTotalCost":0,"totalCost":76000},
+{"tractId":"LA123-19N10E26-02","landowner":"DONALD M. RALEY","address":"P. O. BOX 729","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-11","broker":"IAN MCCLELLAND","interest":0.5,"acres":63.39,"netAcres":31.7,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":31695.07,"infraTotalCost":0,"totalCost":31695.07},
+{"tractId":"LA123-19N10E26-02","landowner":"DONDOROSA FARMS, LLC","address":"6380 HWY 134","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":63.39,"netAcres":31.7,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":31695.07,"infraTotalCost":0,"totalCost":31695.07},
+{"tractId":"LA123-19N10E26-03","landowner":"ALICE FAY HENRY","address":"589 HIGHWAY 860","city":"WINNSBORO","state":"LA","zip":"71295","county":"WEST","mailedDate":"2026-08-26","broker":"SCOTT BROUSSARD","interest":1,"acres":4,"netAcres":4,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4000,"infraTotalCost":0,"totalCost":4000},
+{"tractId":"LA123-19N10E26-04","landowner":"THE ARCHAEOLOGICAL CONSERVANCY","address":"1717 GIRARD BLVD. NE","city":"ALBURQUERQUE","state":"NM","zip":"87106","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":3,"netAcres":3,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":3000,"infraTotalCost":0,"totalCost":3000},
+{"tractId":"LA123-19N10E26-05","landowner":"THE MACON CROSSING, LLC","address":"2606 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":19.55,"netAcres":19.55,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":19554.24,"infraTotalCost":0,"totalCost":19554.24},
+{"tractId":"LA123-19N10E26-06","landowner":"MARTY A. AND MELISSA B. SIMMS","address":"265 DOGWOOD RIDGE ROAD","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":5.46,"netAcres":5.46,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":5459.08,"infraTotalCost":0,"totalCost":5459.08},
+{"tractId":"LA123-19N10E3-01","landowner":"BOBBY URIAH ELKINS, DECEASED","address":"2694 HWY 15","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"DECEASED - NEW IOL SENT TO HEIRS","broker":"CRAIG PUGLIESE","interest":0,"acres":250,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E3-01","landowner":"RICHARD DALE ELKINS","address":"1259 LIBERTY CHURCH ROAD","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.018519,"acres":250,"netAcres":4.63,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":27.78,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4629.63,"infraTotalCost":27.78,"totalCost":4657.41},
+{"tractId":"LA123-19N10E3-01","landowner":"BOBBY STEPHEN ELKINS","address":"562 JAMES WILLIAMS ROAD","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.018519,"acres":250,"netAcres":4.63,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":27.78,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4629.63,"infraTotalCost":27.78,"totalCost":4657.41},
+{"tractId":"LA123-19N10E3-01","landowner":"CAROL ANN ELKINS CHRISMAN","address":"2736 HIGHWAY 15","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.018519,"acres":250,"netAcres":4.63,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":27.78,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4629.63,"infraTotalCost":27.78,"totalCost":4657.41},
+{"tractId":"LA123-19N10E3-01","landowner":"CYNTHIA LYNN HANEY","address":"4053 HIGHWAY 818","city":"RUSTON","state":"LA","zip":"71270","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":250,"netAcres":6.94,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":41.67,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6944.44,"infraTotalCost":41.67,"totalCost":6986.11},
+{"tractId":"LA123-19N10E3-01","landowner":"BRUCE HANEY","address":"4053 HIGHWAY 818","city":"RUSTON","state":"LA","zip":"71270","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":250,"netAcres":6.94,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":41.67,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6944.44,"infraTotalCost":41.67,"totalCost":6986.11},
+{"tractId":"LA123-19N10E3-01","landowner":"DEBORAH ANN DOLES RAMSEY","address":"5483 HWY 80","city":"ARCADIA","state":"LA","zip":"71001","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.166667,"acres":250,"netAcres":41.67,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":250,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":41666.67,"infraTotalCost":250,"totalCost":41916.67},
+{"tractId":"LA123-19N10E3-01","landowner":"ELAINE FOSTER ELKINS, DECEASED","address":"5338 HOLLYHOCK LANE","city":"BOSSIER CITY","state":"LA","zip":"71112","county":"WEST","mailedDate":"DECEASED - NEW IOL SENT TO HEIRS","broker":"CRAIG PUGLIESE","interest":0,"acres":250,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E3-01","landowner":"HEZ NEWTON ELKINS","address":"280 EAGLES NEST DRIVE","city":"FARMERVILLE","state":"LA","zip":"71241","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.111111,"acres":250,"netAcres":27.78,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":166.67,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":27777.78,"infraTotalCost":166.67,"totalCost":27944.44},
+{"tractId":"LA123-19N10E3-01","landowner":"JAMES ALAN MISENHEIMER","address":"4203 PALMETTO ROAD # 2106","city":"BENTON","state":"LA","zip":"71006","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":250,"netAcres":6.94,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":41.67,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6944.44,"infraTotalCost":41.67,"totalCost":6986.11},
+{"tractId":"LA123-19N10E3-01","landowner":"PAULA MISENHEIMER SCHILDROTH","address":"104 ROBBI STREET","city":"SPRINGHILL","state":"LA","zip":"71075","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":250,"netAcres":6.94,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":41.67,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6944.44,"infraTotalCost":41.67,"totalCost":6986.11},
+{"tractId":"LA123-19N10E3-01","landowner":"REAGAN WEST CARROLL PROPERTIES, LLC","address":"108 ROSEMEADE COURT","city":"ALEDO","state":"TX","zip":"76008","county":"WEST","mailedDate":"2026-08-10","broker":"CRAIG PUGLIESE","interest":0.333333,"acres":250,"netAcres":83.33,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":83333.33,"infraTotalCost":500,"totalCost":83833.33},
+{"tractId":"LA123-19N10E3-01","landowner":"REBECCA DOLES CHANEY","address":"7914 ST. ANDREWS CIRCLE","city":"ORLANDO","state":"FL","zip":"32835","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.166667,"acres":250,"netAcres":41.67,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":250,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":41666.67,"infraTotalCost":250,"totalCost":41916.67},
+{"tractId":"LA123-19N10E3-01","landowner":"TOM WADE ELKINS","address":"477 JACK BEAIRD ROAD","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.055556,"acres":250,"netAcres":13.89,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":3.0,"obsWellCost":83.33,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":13888.89,"infraTotalCost":83.33,"totalCost":13972.22},
+{"tractId":"LA123-19N10E3-02","landowner":"FRANK AND OUIDA SHIVERS ECKARD, USUFRUCT","address":"428 ECKARD RD.","city":"GILBERT","state":"LA","zip":"71336","county":"WEST","mailedDate":"2026-08-28","broker":"LARRY BERTRAND","interest":0.958333,"acres":53,"netAcres":50.79,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":50791.67,"infraTotalCost":0,"totalCost":50791.67},
+{"tractId":"LA123-19N10E3-02","landowner":"EMILY ELIZABETH ECKARD, NAKED OWNER","address":"P. O. BOX 753","city":"WINNSBORO","state":"LA","zip":"71295","county":"WEST","mailedDate":"2026-08-28","broker":"LARRY BERTRAND","interest":0,"acres":53,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-19N10E3-02","landowner":"JOSHUA TRAVIS BOX","address":"603 MULLICAN ROAD","city":"BASKIN","state":"LA","zip":"71219","county":"WEST","mailedDate":"2026-08-11","broker":"LARRY BERTRAND","interest":0.041667,"acres":53,"netAcres":2.21,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2208.33,"infraTotalCost":0,"totalCost":2208.33},
+{"tractId":"LA123-19N10E3-03","landowner":"BRENTON RAY PRINE","address":"3568 HWY 589","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":26,"netAcres":26,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26000,"infraTotalCost":0,"totalCost":26000},
+{"tractId":"LA123-19N10E3-04","landowner":"VICKY PRINE PILLARS","address":"132 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"CRAIG PUGLIESE","interest":1,"acres":26.5,"netAcres":26.5,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26500,"infraTotalCost":0,"totalCost":26500},
+{"tractId":"LA123-19N10E3-05","landowner":"LYDE WORTHINGTON RAWLS","address":"3470 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":40.83,"netAcres":40.83,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":40830.35,"infraTotalCost":0,"totalCost":40830.35},
+{"tractId":"LA123-19N10E3-06","landowner":"JEREMY HEATH PRINE (LA WORKFORCE)","address":"14925 HWY 27","city":"DEQUINCY","state":"LA","zip":"70633","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E3-07","landowner":"RUSSELL RAY AND RHONDA BROCK PRINE","address":"515 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"BOB DERISE","interest":1,"acres":78,"netAcres":78,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":78000,"infraTotalCost":0,"totalCost":78000},
+{"tractId":"LA123-19N10E3-08","landowner":"JEFF L. AND KAREN B. SYKES","address":"419 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E3-09","landowner":"RUSSELL RAY AND RHONDA BROCK PRINE","address":"515 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"BOB DERISE","interest":1,"acres":1,"netAcres":1,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1000,"infraTotalCost":0,"totalCost":1000},
+{"tractId":"LA123-19N10E3-10","landowner":"COUNCILL INVESTMENTS GROUP, LLC","address":"545 CEDAR CLUB CIRCLE","city":"CHAPEL HILL","state":"NC","zip":"27517","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":79.71,"netAcres":13.29,"netFootage":52.57,"netRods":3.19,"pipeCost":1592.93,"iwWellCount":1.0,"iwWellCost":166.67,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":13285.13,"infraTotalCost":1842.93,"totalCost":15128.06},
+{"tractId":"LA123-19N10E3-10","landowner":"HALE HOUNDS, INC.","address":"2606 OLD DELHI RD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.5,"acres":79.71,"netAcres":39.86,"netFootage":157.7,"netRods":9.56,"pipeCost":4778.8,"iwWellCount":1.0,"iwWellCost":500,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":250,"surfaceSiteCost":0,"bonusPayment":39855.38,"infraTotalCost":5528.8,"totalCost":45384.18},
+{"tractId":"LA123-19N10E3-10","landowner":"MARTSON LAND AND MINERALS, LLC","address":"1 GROVE ISLAND DRIVE, UNIT 1403","city":"MIAMI","state":"FL","zip":"33133","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":79.71,"netAcres":13.29,"netFootage":52.57,"netRods":3.19,"pipeCost":1592.93,"iwWellCount":1.0,"iwWellCost":166.67,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":13285.13,"infraTotalCost":1842.93,"totalCost":15128.06},
+{"tractId":"LA123-19N10E3-10","landowner":"SWALLOW HARBOR, LLC","address":"P. O. BOX 297","city":"CHARLESTON","state":"SC","zip":"29402","county":"WEST","mailedDate":"2026-08-10","broker":"IAN MCCLELLAND","interest":0.166667,"acres":79.71,"netAcres":13.29,"netFootage":52.57,"netRods":3.19,"pipeCost":1592.93,"iwWellCount":1.0,"iwWellCost":166.67,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"Y","rectifierCost":83.33,"surfaceSiteCost":0,"bonusPayment":13285.13,"infraTotalCost":1842.93,"totalCost":15128.06},
+{"tractId":"LA123-19N10E3-11","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":30,"netAcres":30,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":30000,"infraTotalCost":0,"totalCost":30000},
+{"tractId":"LA123-19N10E3-12","landowner":"RICKY AND JESSICA CARROLL STARKS, JR.","address":"285 MCMILLAN ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"BOB DERISE","interest":1,"acres":2,"netAcres":2,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2000,"infraTotalCost":0,"totalCost":2000},
+{"tractId":"LA123-19N10E3-13","landowner":"RUSSELL RAY PRINE","address":"515 HALE ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"BOB DERISE","interest":1,"acres":26,"netAcres":26,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26000,"infraTotalCost":0,"totalCost":26000},
+{"tractId":"LA123-19N10E3-14","landowner":"PENNY PRINE BRADBURY","address":"2884 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":26.5,"netAcres":26.5,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26500,"infraTotalCost":0,"totalCost":26500},
+{"tractId":"LA123-19N10E4-01","landowner":"JOHN CECIL AND NORMA LYNN STARKS, III","address":"2769 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":40,"netAcres":40,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":40000,"infraTotalCost":0,"totalCost":40000},
+{"tractId":"LA123-19N10E4-02","landowner":"JOHN CECIL AND NORMA LYNN STARKS, III","address":"2769 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":40,"netAcres":40,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":40000,"infraTotalCost":0,"totalCost":40000},
+{"tractId":"LA123-19N10E4-03","landowner":"SOUTHMEATH LLC","address":"P. O. BOX 1018","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":68.48,"netAcres":68.48,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":68480,"infraTotalCost":0,"totalCost":68480},
+{"tractId":"LA123-19N10E4-04","landowner":"SOUTHMEATH LLC","address":"P. O. BOX 1018","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":34.75,"netAcres":34.75,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":34752.69,"infraTotalCost":0,"totalCost":34752.69},
+{"tractId":"LA123-19N10E4-05","landowner":"SUGARLAND FARM, INC.","address":"4275 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":1.73,"netAcres":1.73,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1730,"infraTotalCost":0,"totalCost":1730},
+{"tractId":"LA123-19N10E4-06","landowner":"WEST MEATH LLC","address":"P. O. BOX 1018","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":51.5,"netAcres":51.5,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":51500,"infraTotalCost":0,"totalCost":51500},
+{"tractId":"LA123-19N10E4-07","landowner":"ANDREA LENEA CARRAWAY, NAKED OWNER, SUBJECT TO THE USUFRUCT OF BARBARA CARTER CARRAWAY","address":"188 ROBINSON ROAD","city":"DELHI","state":"LA","zip":"71232","county":"WEST","mailedDate":"2026-08-11","broker":"SCOTT BROUSSARD","interest":0.25,"acres":15,"netAcres":3.75,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":3750,"infraTotalCost":0,"totalCost":3750},
+{"tractId":"LA123-19N10E4-07","landowner":"BARBARA CARTER CARRAWAY, USUFRUCTUARY","address":"P. O. BOX 93","city":"CROWVILLE","state":"LA","zip":"71230","county":"WEST","mailedDate":"2026-08-11","broker":"SCOTT BROUSSARD","interest":0.75,"acres":15,"netAcres":11.25,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":11250,"infraTotalCost":0,"totalCost":11250},
+{"tractId":"LA123-19N10E4-08","landowner":"CONNIE CARTER MCNEIL","address":"3138 HIGHWAY 17","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-26","broker":"SCOTT BROUSSARD","interest":1,"acres":12.33,"netAcres":12.33,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":12330.53,"infraTotalCost":0,"totalCost":12330.53},
+{"tractId":"LA123-19N10E4-09","landowner":"SOUTHMEATH LLC","address":"P. O. BOX 1018","city":"OAK GROVE","state":"LA","zip":"71263","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":5.88,"netAcres":5.88,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":5877.31,"infraTotalCost":0,"totalCost":5877.31},
+{"tractId":"LA123-19N10E4-10","landowner":"CARY JOHN STEVENS","address":"193 IVY BABINEAUX","city":"OPELOUSAS","state":"LA","zip":"70570","county":"WEST","mailedDate":"2026-08-04","broker":"SCOTT BROUSSARD","interest":1,"acres":51.52,"netAcres":51.52,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":51520,"infraTotalCost":0,"totalCost":51520},
+{"tractId":"LA123-19N10E9-01","landowner":"PAUL C. GOWAN LAND TRUST","address":"1015 BARREL SPRINGS HOLLOW ROAD","city":"FRANKLIN","state":"TN","zip":"37069","county":"WEST","mailedDate":"2026-08-06","broker":"SCOTT BROUSSARD","interest":1,"acres":75.75,"netAcres":75.75,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":75754.08,"infraTotalCost":500,"totalCost":76254.08},
+{"tractId":"LA123-19N10E9-02","landowner":"BRIAN LANE MILLER","address":"618 GUICE RD.","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-26","broker":"BOB DERISE","interest":0.666667,"acres":80,"netAcres":53.33,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":53333.33,"infraTotalCost":0,"totalCost":53333.33},
+{"tractId":"LA123-19N10E9-02","landowner":"ROBERT STEVEN MILLER","address":"1149 GUICE ROAD","city":"EPPS","state":"LA","zip":"71237","county":"WEST","mailedDate":"2026-08-11","broker":"BOB DERISE","interest":0.333333,"acres":80,"netAcres":26.67,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":26666.67,"infraTotalCost":0,"totalCost":26666.67},
+{"tractId":"LA123-19N10E9-03","landowner":"JOSEPH FRANCIS AND TERRI SYLVESTRI","address":"95 GREEN STREET","city":"RAYVILLE","state":"LA","zip":"71269","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":40,"netAcres":40,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":40000,"infraTotalCost":0,"totalCost":40000},
+{"tractId":"LA123-19N10E9-04","landowner":"KEVIN LAMAR AND AMY HALE","address":"2606 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-05","broker":"LARRY BERTRAND","interest":1,"acres":85,"netAcres":85,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":1.0,"obsWellCost":500,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":85000,"infraTotalCost":500,"totalCost":85500},
+{"tractId":"LA123-19N10E9-05","landowner":"SBS FARMS, LLC","address":"2385 DUCKWORTH ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-06","broker":"CRAIG PUGLIESE","interest":1,"acres":35,"netAcres":35,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":35000,"infraTotalCost":0,"totalCost":35000},
+{"tractId":"LA123-20N10E33-01","landowner":"POVERTY POINT PRODUCE CO.","address":"4410 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-10","broker":"BOB DERISE","interest":1,"acres":80,"netAcres":80,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":80000,"infraTotalCost":0,"totalCost":80000},
+{"tractId":"LA123-20N10E34-01","landowner":"LYDE WORTHINGTON RAWLS","address":"3470 OLD DELHI ROAD","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"2026-08-04","broker":"LARRY BERTRAND","interest":1,"acres":77.17,"netAcres":77.17,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":77169.65,"infraTotalCost":0,"totalCost":77169.65},
+{"tractId":"LA123-20N10E34-02","landowner":"BOBBY URIAH ELKINS, DECEASED","address":"2694 HWY 15","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"DECEASED - NEW IOL SENT TO HEIRS","broker":"CRAIG PUGLIESE","interest":0,"acres":40,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-20N10E34-02","landowner":"RICHARD DALE ELKINS","address":"1259 LIBERTY CHURCH ROAD","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.018519,"acres":40,"netAcres":0.74,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":740.74,"infraTotalCost":0,"totalCost":740.74},
+{"tractId":"LA123-20N10E34-02","landowner":"BOBBY STEPHEN ELKINS","address":"562 JAMES WILLIAMS ROAD","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.018519,"acres":40,"netAcres":0.74,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":740.74,"infraTotalCost":0,"totalCost":740.74},
+{"tractId":"LA123-20N10E34-02","landowner":"CAROL ANN ELKINS CHRISMAN","address":"2736 HIGHWAY 15","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.018519,"acres":40,"netAcres":0.74,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":740.74,"infraTotalCost":0,"totalCost":740.74},
+{"tractId":"LA123-20N10E34-02","landowner":"CYNTHIA LYNN HANEY","address":"4053 HIGHWAY 818","city":"RUSTON","state":"LA","zip":"71270","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":40,"netAcres":1.11,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1111.11,"infraTotalCost":0,"totalCost":1111.11},
+{"tractId":"LA123-20N10E34-02","landowner":"BRUCE HANEY","address":"4053 HIGHWAY 818","city":"RUSTON","state":"LA","zip":"71270","county":"WEST","mailedDate":"2026-08-27","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":40,"netAcres":1.11,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1111.11,"infraTotalCost":0,"totalCost":1111.11},
+{"tractId":"LA123-20N10E34-02","landowner":"DEBORAH ANN DOLES RAMSEY","address":"5483 HWY 80","city":"ARCADIA","state":"LA","zip":"71001","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.166667,"acres":40,"netAcres":6.67,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6666.67,"infraTotalCost":0,"totalCost":6666.67},
+{"tractId":"LA123-20N10E34-02","landowner":"ELAINE FOSTER ELKINS, DECEASED","address":"5338 HOLLYHOCK LANE","city":"BOSSIER CITY","state":"LA","zip":"71112","county":"WEST","mailedDate":"DECEASED - NEW IOL SENT TO HEIRS","broker":"CRAIG PUGLIESE","interest":0,"acres":40,"netAcres":0,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":0,"infraTotalCost":0,"totalCost":0},
+{"tractId":"LA123-20N10E34-02","landowner":"HEZ NEWTON ELKINS","address":"280 EAGLES NEST DRIVE","city":"FARMERVILLE","state":"LA","zip":"71241","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.111111,"acres":40,"netAcres":4.44,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":4444.44,"infraTotalCost":0,"totalCost":4444.44},
+{"tractId":"LA123-20N10E34-02","landowner":"JAMES ALAN MISENHEIMER","address":"4203 PALMETTO ROAD # 2106","city":"BENTON","state":"LA","zip":"71006","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":40,"netAcres":1.11,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1111.11,"infraTotalCost":0,"totalCost":1111.11},
+{"tractId":"LA123-20N10E34-02","landowner":"PAULA MISENHEIMER SCHILDROTH","address":"104 ROBBI STREET","city":"SPRINGHILL","state":"LA","zip":"71075","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.027778,"acres":40,"netAcres":1.11,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":1111.11,"infraTotalCost":0,"totalCost":1111.11},
+{"tractId":"LA123-20N10E34-02","landowner":"REAGAN WEST CARROLL PROPERTIES, LLC","address":"108 ROSEMEADE COURT","city":"ALEDO","state":"TX","zip":"76008","county":"WEST","mailedDate":"2026-08-10","broker":"CRAIG PUGLIESE","interest":0.333333,"acres":40,"netAcres":13.33,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":13333.33,"infraTotalCost":0,"totalCost":13333.33},
+{"tractId":"LA123-20N10E34-02","landowner":"REBECCA DOLES CHANEY","address":"7914 ST. ANDREWS CIRCLE","city":"ORLANDO","state":"FL","zip":"32835","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.166667,"acres":40,"netAcres":6.67,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":6666.67,"infraTotalCost":0,"totalCost":6666.67},
+{"tractId":"LA123-20N10E34-02","landowner":"TOM WADE ELKINS","address":"477 JACK BEAIRD ROAD","city":"SPEARSVILLE","state":"LA","zip":"71277","county":"WEST","mailedDate":"2026-08-11","broker":"CRAIG PUGLIESE","interest":0.055556,"acres":40,"netAcres":2.22,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":2222.22,"infraTotalCost":0,"totalCost":2222.22},
+{"tractId":"LA123-20N10E34-03","landowner":"ADAM R. PLUNKETT","address":"4270 HWY 577","city":"PIONEER","state":"LA","zip":"71266","county":"WEST","mailedDate":"DO NOT MAIL","broker":"SCOTT BROUSSARD","interest":1,"acres":40,"netAcres":40,"netFootage":0,"netRods":0,"pipeCost":0,"iwWellCount":0,"iwWellCost":0,"obsWellCount":0,"obsWellCost":0,"rectifierSite":"N","rectifierCost":0,"surfaceSiteCost":0,"bonusPayment":40000,"infraTotalCost":0,"totalCost":40000}
+];
+
+
+
+
+
 ;
 
 
@@ -2367,6 +2708,417 @@ const lineListExportBtn = document.getElementById('loExportBtn2');
 if(lineListExportBtn) lineListExportBtn.addEventListener('click', exportLineListToXlsx);
 const lineListExportNotesBtn = document.getElementById('loExportBtnNotes2');
 if(lineListExportNotesBtn) lineListExportNotesBtn.addEventListener('click', exportLineListWithNotesToXlsx);
+
+/* ---------------- IOL Tracking tab (ETC - EPPS - Line List - Master.xlsx) ----------------
+   Independent of everything else in this dashboard — its own data, its own filter pills,
+   its own search/sort state — same pattern as the EPPS Line List tab. */
+const IOL_STATUS_ORDER = LINE_LIST_STATUS_ORDER;
+let iolSelected = 'ALL';
+let iolSort = { key: 'tractId', dir: 1 };
+let iolSearchTerm = '';
+let iolCurrentRows = [];
+
+function renderIolPills(){
+  const row = document.getElementById('iolPillRow');
+  if(!row) return;
+  row.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'pill' + (iolSelected==='ALL' ? ' active':'');
+  allBtn.textContent = 'ALL';
+  allBtn.onclick = ()=>{ iolSelected = 'ALL'; renderIolPills(); renderIolTable(); };
+  row.appendChild(allBtn);
+
+  IOL_STATUS_ORDER.forEach(name=>{
+    const p = document.createElement('button');
+    p.className = 'pill' + (name===iolSelected ? ' active':'');
+    const c = statusColor(name);
+    const swatch = `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${c};flex-shrink:0;"></span>`;
+    p.innerHTML = swatch + ' ' + name;
+    if(name===iolSelected){
+      p.style.background = c;
+      p.style.borderColor = c;
+      p.style.color = '#0b0f1a';
+      p.style.boxShadow = `0 0 0 4px ${c}55`;
+    }
+    p.onclick = ()=>{ iolSelected = name; renderIolPills(); renderIolTable(); };
+    row.appendChild(p);
+  });
+}
+
+function buildIolRows(){
+  // Joins in each tract's current status from the EPPS Line List tab (tract-level rollup
+  // status, e.g. PARTIALLY ACQUIRED), instead of using IOL Tracking's own Status column,
+  // which is populated for only 2 of 255 rows in the source file. All 152 tract IDs in
+  // IOL Tracking match a tract in eppsLineList, so this join has no gaps.
+  const trStatusByTract = {};
+  if(typeof eppsLineList !== 'undefined'){
+    eppsLineList.forEach(r => { trStatusByTract[r.tractId] = r.trStatus; });
+  }
+  return iolTracking.map(r => ({ ...r, status: trStatusByTract[r.tractId] || 'UNKNOWN' }));
+}
+
+function renderIolTable(){
+  const tbody = document.getElementById('iolTableBody');
+  const empty = document.getElementById('iolEmpty');
+  const countEl = document.getElementById('iolCount');
+  if(!tbody || typeof iolTracking === 'undefined') return;
+
+  let rows = buildIolRows();
+  if(iolSelected !== 'ALL'){
+    rows = rows.filter(r => r.status === iolSelected);
+  }
+  if(iolSearchTerm.trim()){
+    const term = iolSearchTerm.trim().toLowerCase();
+    rows = rows.filter(r => r.landowner.toLowerCase().includes(term) || String(r.tractId).toLowerCase().includes(term));
+  }
+
+  rows = rows.slice().sort((a,b)=>{
+    const k = iolSort.key;
+    if(k === 'status'){
+      const ar = LINE_LIST_STATUS_RANK[a.status] ?? 99, br = LINE_LIST_STATUS_RANK[b.status] ?? 99;
+      if(ar !== br) return (ar - br) * iolSort.dir;
+      return a.tractId < b.tractId ? -1 : a.tractId > b.tractId ? 1 : 0;
+    }
+    let av = a[k], bv = b[k];
+    if(typeof av === 'string'){ av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if(av < bv) return -1 * iolSort.dir;
+    if(av > bv) return 1 * iolSort.dir;
+    return 0;
+  });
+
+  countEl.textContent = `${rows.length} tract${rows.length===1?'':'s'}`;
+  iolCurrentRows = rows;
+
+  if(rows.length === 0){
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    const usd = (v) => v.toLocaleString('en-US', {style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2});
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="lo-tract-id">${r.tractId}</td>
+        <td class="lo-name">${r.landowner}</td>
+        <td>${r.address}</td>
+        <td>${r.city}</td>
+        <td>${r.state}</td>
+        <td>${r.zip}</td>
+        <td>${r.county}</td>
+        <td><span class="lo-status-chip" style="background:${statusColor(r.status)}">${r.status}</span></td>
+        <td>${r.mailedDate}</td>
+        <td>${r.interest != null ? r.interest.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:6}) : '—'}</td>
+        <td>${r.acres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.netAcres.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.netFootage.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${r.netRods.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        <td>${usd(r.pipeCost)}</td>
+        <td>${r.iwWellCount.toLocaleString('en-US')}</td>
+        <td>${usd(r.iwWellCost)}</td>
+        <td>${r.obsWellCount.toLocaleString('en-US')}</td>
+        <td>${usd(r.obsWellCost)}</td>
+        <td>${r.rectifierSite}</td>
+        <td>${usd(r.rectifierCost)}</td>
+        <td>${usd(r.surfaceSiteCost)}</td>
+        <td>${usd(r.bonusPayment)}</td>
+        <td>${usd(r.infraTotalCost)}</td>
+        <td>${usd(r.totalCost)}</td>
+        <td>${r.broker}</td>
+      </tr>
+    `).join('');
+  }
+
+  document.querySelectorAll('#iolTable th[data-sort]').forEach(th=>{
+    const key = th.getAttribute('data-sort');
+    const arrow = th.querySelector('.arrow');
+    if(key === iolSort.key){
+      th.classList.add('active');
+      arrow.textContent = iolSort.dir === 1 ? '▲' : '▼';
+    } else {
+      th.classList.remove('active');
+      arrow.textContent = '';
+    }
+  });
+}
+
+async function exportIolToXlsx(){
+  const btn = document.getElementById('iolExportBtn');
+  if(typeof ExcelJS === 'undefined'){
+    if(btn) btn.textContent = 'Export unavailable (offline?)';
+    return;
+  }
+  const originalLabel = btn ? btn.textContent : null;
+  if(btn){ btn.disabled = true; btn.textContent = 'Building file…'; }
+
+  try {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('IOL Tracking', { views: [{ state: 'frozen', ySplit: 1 }] });
+
+    const columns = [
+      { header: 'Tract',                     key: 'tractId',         width: 22 },
+      { header: 'Landowner',                  key: 'landowner',       width: 40 },
+      { header: 'Address',                    key: 'address',         width: 26 },
+      { header: 'City',                       key: 'city',            width: 16 },
+      { header: 'State',                      key: 'state',           width: 8  },
+      { header: 'Zip',                        key: 'zip',             width: 10 },
+      { header: 'County',                     key: 'county',          width: 12 },
+      { header: 'Status',                     key: 'status',          width: 16 },
+      { header: 'Merge/Mailed Date',          key: 'mailedDate',      width: 18 },
+      { header: 'Interest',                   key: 'interest',        width: 11 },
+      { header: 'Acres',                      key: 'acres',           width: 12 },
+      { header: 'Net Acres',                  key: 'netAcres',        width: 12 },
+      { header: 'Net Footage',                key: 'netFootage',      width: 13 },
+      { header: 'Net Rods',                   key: 'netRods',         width: 11 },
+      { header: 'Pipe Cost',                  key: 'pipeCost',        width: 14 },
+      { header: 'IW Well Count',              key: 'iwWellCount',     width: 14 },
+      { header: 'IW Well Cost',               key: 'iwWellCost',      width: 14 },
+      { header: 'OBS/DIS Well Count',         key: 'obsWellCount',    width: 17 },
+      { header: 'OBS/DIS Well Cost',          key: 'obsWellCost',     width: 16 },
+      { header: 'Rectifier Site',             key: 'rectifierSite',   width: 14 },
+      { header: 'Rectifier Site Cost',        key: 'rectifierCost',   width: 17 },
+      { header: 'Surface Site Cost',          key: 'surfaceSiteCost', width: 16 },
+      { header: 'Bonus Payment',              key: 'bonusPayment',    width: 15 },
+      { header: 'Infrastructure Total Cost',  key: 'infraTotalCost',  width: 22 },
+      { header: 'Total Cost',                 key: 'totalCost',       width: 15 },
+      { header: 'Broker',                     key: 'broker',          width: 20 },
+    ];
+    columns.forEach((c, i) => { ws.getColumn(i+1).width = c.width; });
+
+    ws.addTable({
+      name: 'IOLTracking',
+      ref: 'A1',
+      headerRow: true,
+      totalsRow: false,
+      style: { theme: 'TableStyleMedium16', showRowStripes: true },
+      columns: columns.map(c => ({ name: c.header })),
+      rows: iolCurrentRows.map(r => columns.map(c => r[c.key])),
+    });
+
+    const lastRow = iolCurrentRows.length + 1;
+    const blackBorder = { style: 'thin', color: { argb: 'FF000000' } };
+    for(let r = 1; r <= lastRow; r++){
+      const row = ws.getRow(r);
+      for(let c = 1; c <= columns.length; c++){
+        const cell = row.getCell(c);
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: blackBorder, left: blackBorder, bottom: blackBorder, right: blackBorder };
+        cell.font = { name: 'Calibri', size: 10, bold: r === 1 };
+      }
+    }
+    ws.views = [{ state: 'frozen', ySplit: 1, showGridLines: true }];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `IOL_Tracking_${new Date().toISOString().slice(0,10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = originalLabel; }
+  }
+}
+
+renderIolPills();
+renderIolTable();
+const iolSearchInput = document.getElementById('iolSearchInput');
+if(iolSearchInput){
+  iolSearchInput.addEventListener('input', (e)=>{
+    iolSearchTerm = e.target.value;
+    renderIolTable();
+  });
+}
+document.querySelectorAll('#iolTable th[data-sort]').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.getAttribute('data-sort');
+    if(iolSort.key === key){
+      iolSort.dir *= -1;
+    } else {
+      iolSort.key = key;
+      iolSort.dir = ['acres','netAcres','netFootage','netRods','pipeCost','iwWellCount','iwWellCost','obsWellCount','obsWellCost','rectifierCost','surfaceSiteCost','bonusPayment','infraTotalCost','totalCost'].includes(key) ? -1 : 1;
+    }
+    renderIolTable();
+  });
+});
+const iolExportBtn = document.getElementById('iolExportBtn');
+if(iolExportBtn) iolExportBtn.addEventListener('click', exportIolToXlsx);
+
+/* ---------------- IOL live-sync experiment ----------------
+   Attempts to fetch the tracking spreadsheet directly from SharePoint and parse it
+   client-side, so the tab could eventually update without a manual re-upload. This is
+   diagnostic: it reports exactly what happened (network/CORS failure vs. wrong content
+   type vs. a real parse) rather than failing silently, since the whole point right now is
+   to find out which of those we're dealing with. If it fails, the existing static data
+   (from the last uploaded file) stays exactly as it is — nothing is lost either way. */
+const IOL_SHAREPOINT_URL = 'https://schoeffler-my.sharepoint.com/:x:/r/personal/jguy_segland_com/_layouts/15/Doc.aspx?sourcedoc=%7BF58A2C6E-9029-452B-B302-B6E10826FB9B%7D&file=ETC%20-%20EPPS%20-%20Line%20List%20-%20Master.xlsx&action=default&mobileredirect=true';
+
+function iolStr(v){
+  if(v == null) return '';
+  if(typeof v === 'object'){
+    if(v.richText) return v.richText.map(t=>t.text).join('');
+    if(v.result != null) return String(v.result);
+    if(v.text != null) return String(v.text);
+  }
+  return String(v);
+}
+function iolNorm(v){
+  const s = iolStr(v).trim();
+  return s ? s.toUpperCase().replace(/\s+/g,' ') : s;
+}
+function iolNum(v){
+  if(typeof v === 'number') return Math.round(v*100)/100;
+  if(v && typeof v === 'object' && typeof v.result === 'number') return Math.round(v.result*100)/100;
+  const s = iolStr(v).trim();
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : Math.round(n*100)/100;
+}
+function iolDateOrNote(v){
+  if(v instanceof Date){
+    return v.toISOString().slice(0,10);
+  }
+  return iolNorm(v);
+}
+
+function parseIolWorksheetToRows(ws){
+  const headerRow = ws.getRow(1);
+  const headerIndex = {};
+  headerRow.eachCell((cell, colNumber) => { headerIndex[iolStr(cell.value).trim()] = colNumber; });
+
+  const need = ['TractID','Landowner','Address','City','State','Zip','TractCounty','Merge/Mailed Date','Broker',
+    'Interest','Acres','Net Acres','Net Footage','Net Rods','Pipe Cost (500/rod)','IW Well Count',
+    'IW Well Cost (1000/well)','OBS/DIS Well Count','OBS/DIS Well Cost (500/well)','Recitfier Site (Y/N)',
+    'Recitfier Site Cost (500/site)','Surface Site Cost (2000/acre)','Bonus Payment (1000/acre)',
+    'Infrastructure Total Cost','Total Cost'];
+  const missing = need.filter(h => !headerIndex[h]);
+  if(missing.length){
+    throw new Error(`Worksheet is missing expected column(s): ${missing.join(', ')}. The sheet's structure may have changed since this dashboard was last built.`);
+  }
+
+  const rows = [];
+  ws.eachRow((row, rowNumber) => {
+    if(rowNumber === 1) return;
+    const get = (h) => row.getCell(headerIndex[h]).value;
+    const tractId = iolStr(get('TractID')).trim();
+    if(!tractId) return;
+    rows.push({
+      tractId,
+      landowner: iolNorm(get('Landowner')),
+      address: iolNorm(get('Address')),
+      city: iolNorm(get('City')),
+      state: iolNorm(get('State')),
+      zip: iolStr(get('Zip')).trim(),
+      county: iolNorm(get('TractCounty')),
+      mailedDate: iolDateOrNote(get('Merge/Mailed Date')),
+      broker: iolNorm(get('Broker')),
+      interest: iolNum(get('Interest')),
+      acres: iolNum(get('Acres')),
+      netAcres: iolNum(get('Net Acres')),
+      netFootage: iolNum(get('Net Footage')),
+      netRods: iolNum(get('Net Rods')),
+      pipeCost: iolNum(get('Pipe Cost (500/rod)')),
+      iwWellCount: iolNum(get('IW Well Count')),
+      iwWellCost: iolNum(get('IW Well Cost (1000/well)')),
+      obsWellCount: iolNum(get('OBS/DIS Well Count')),
+      obsWellCost: iolNum(get('OBS/DIS Well Cost (500/well)')),
+      rectifierSite: iolNum(get('Recitfier Site (Y/N)')) === 1 ? 'Y' : 'N',
+      rectifierCost: iolNum(get('Recitfier Site Cost (500/site)')),
+      surfaceSiteCost: iolNum(get('Surface Site Cost (2000/acre)')),
+      bonusPayment: iolNum(get('Bonus Payment (1000/acre)')),
+      infraTotalCost: iolNum(get('Infrastructure Total Cost')),
+      totalCost: iolNum(get('Total Cost')),
+    });
+  });
+  return rows;
+}
+
+async function tryIolLiveSync(){
+  const btn = document.getElementById('iolSyncBtn');
+  const statusEl = document.getElementById('iolSyncStatus');
+  const diagEl = document.getElementById('iolSyncDiagnostic');
+  const setStatus = (text, cls) => {
+    statusEl.textContent = text;
+    statusEl.className = 'iol-sync-status' + (cls ? ' ' + cls : '');
+  };
+  const showDiag = (lines) => {
+    diagEl.style.display = 'block';
+    diagEl.textContent = lines.join('\n');
+  };
+
+  if(btn){ btn.disabled = true; btn.textContent = 'Trying…'; }
+  setStatus('Attempting to fetch the live file from SharePoint…');
+  const diag = [`URL: ${IOL_SHAREPOINT_URL}`, `Attempted: ${new Date().toString()}`];
+
+  let resp;
+  try {
+    resp = await fetch(IOL_SHAREPOINT_URL, { mode: 'cors', credentials: 'include' });
+  } catch(err){
+    diag.push(`Fetch threw an error before getting any response: ${err.name}: ${err.message}`,
+      'This is almost always a CORS block or a network-level failure — check this browser\'s',
+      'DevTools Console (F12) for the full message, since browsers hide the specific CORS',
+      'reason from JavaScript for security reasons but print it to the console.');
+    setStatus('Live sync failed — see details below.', 'err');
+    showDiag(diag);
+    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    return;
+  }
+
+  diag.push(`HTTP status: ${resp.status} ${resp.statusText}`,
+    `Content-Type: ${resp.headers.get('content-type') || '(none)'}`,
+    `Response URL (after redirects): ${resp.url}`);
+
+  if(!resp.ok){
+    diag.push('The request reached SharePoint but was rejected — status above is not 2xx.',
+      'A 401/403 usually means this link needs you to be logged into SharePoint in this same',
+      'browser; a redirect to a login page often shows as 200 with an HTML content-type below',
+      'rather than a clean 401, so check the Content-Type line too.');
+    setStatus('Live sync failed — see details below.', 'err');
+    showDiag(diag);
+    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    return;
+  }
+
+  const buffer = await resp.arrayBuffer();
+  const bytes = new Uint8Array(buffer.slice(0, 4));
+  const isZipSignature = bytes[0] === 0x50 && bytes[1] === 0x4B; // "PK" — real .xlsx files are zip archives
+  diag.push(`Response size: ${buffer.byteLength.toLocaleString()} bytes`,
+    `First bytes look like: ${isZipSignature ? 'a real Office/zip file (good sign)' : 'NOT a zip file — likely an HTML viewer page or login redirect, not the actual spreadsheet'}`);
+
+  if(!isZipSignature){
+    diag.push('This means the URL returned a webpage instead of the spreadsheet itself — the',
+      'link shape (a "view in browser" link) is the likely cause, not a permissions problem.',
+      'A true direct-download link is needed for this to work.');
+    setStatus('Live sync failed — got a webpage instead of the file. See details below.', 'err');
+    showDiag(diag);
+    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+    return;
+  }
+
+  try {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buffer);
+    const ws = wb.getWorksheet('ETC_EPPS_DataImport_All');
+    if(!ws) throw new Error(`File loaded, but no worksheet named "ETC_EPPS_DataImport_All" was found. Sheets present: ${wb.worksheets.map(w=>w.name).join(', ')}`);
+    const rows = parseIolWorksheetToRows(ws);
+    if(!rows.length) throw new Error('File and worksheet loaded, but zero data rows were found — check the sheet name and layout still match.');
+
+    iolTracking = rows;
+    renderIolTable();
+    diag.push(`Successfully parsed ${rows.length} rows from the live file.`);
+    setStatus(`Live sync succeeded — showing ${rows.length} rows fetched just now from SharePoint.`, 'ok');
+    showDiag(diag);
+  } catch(err){
+    diag.push(`Got real file bytes, but parsing failed: ${err.message}`);
+    setStatus('Live sync failed while parsing the file — see details below.', 'err');
+    showDiag(diag);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '⟳ Try Live Sync from SharePoint'; }
+  }
+}
+const iolSyncBtn = document.getElementById('iolSyncBtn');
+if(iolSyncBtn) iolSyncBtn.addEventListener('click', tryIolLiveSync);
 
 function renderTractTable(instance){
   const tbody = document.getElementById(instance.tableBodyId);
