@@ -2,18 +2,6 @@ module.exports = async (req, res) => {
   const user = (process.env.ARCGIS_USERNAME || '').trim();
   const pass = (process.env.ARCGIS_PASSWORD || '').trim();
 
-  // TEMPORARY: visit /api/arcgis-token?debug=1 to check the variables
-  if (req.query.debug) {
-    return res.status(200).json({
-      usernameSet: !!user,
-      usernameLength: user.length,
-      usernameStart: user.slice(0, 3),
-      passwordSet: !!pass,
-      passwordLength: pass.length,
-      rawPasswordLength: (process.env.ARCGIS_PASSWORD || '').length,
-      environment: process.env.VERCEL_ENV,
-    });
-  }
 
   try {
     const body = new URLSearchParams({

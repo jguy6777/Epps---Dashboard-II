@@ -548,6 +548,27 @@
   .lo-empty{ text-align:center; color:var(--text-lo); padding:24px; font-size:13px; }
   .lo-note{ font-size:11.5px; color:var(--text-lo); margin-top:12px; line-height:1.5; }
   table.lo-table tbody tr{ cursor:pointer; }
+  table.lo-table tbody tr.lo-row-selected td{ background: rgba(76,141,255,0.18); }
+  table.lo-table tbody tr.lo-row-selected td:first-child{ box-shadow: inset 3px 0 0 #73b2ff; }
+  .tract-popup .leaflet-popup-content-wrapper, .tract-popup .leaflet-popup-tip{
+    background: var(--panel-elev, #141c2e); color: var(--text-hi, #e8edf7);
+    border:1px solid var(--border, #26324a); box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+  }
+  .tract-popup .leaflet-popup-content{ margin: 14px 16px; font-size:12px; line-height:1.45; width:320px !important; }
+  .tract-popup a.leaflet-popup-close-button{ color: var(--text-lo, #8a96ad); }
+  .tp-id{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .tp-grid{ display:grid; grid-template-columns: auto 1fr; gap:3px 12px; margin:8px 0; }
+  .tp-lbl{ color: var(--text-lo, #8a96ad); font-size:10px; text-transform:uppercase; letter-spacing:.05em; padding-top:2px; }
+  .tp-head{ color: var(--text-lo, #8a96ad); font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin:10px 0 4px; border-top:1px solid var(--border, #26324a); padding-top:8px; }
+  .tp-owner{ padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .tp-owner:last-child{ border-bottom:none; }
+  .tp-owner button{ all:unset; cursor:pointer; color:#73b2ff; font-weight:600; }
+  .tp-owner button:hover{ text-decoration:underline; }
+  .tp-owner-meta{ color: var(--text-lo, #8a96ad); font-size:11px; }
+  .tp-chip{ display:inline-block; padding:1px 6px; border-radius:4px; color:#0b0f1a; font-size:10px; font-weight:600; }
+  .tp-note{ background: rgba(255,255,255,0.04); border-radius:6px; padding:6px 8px; margin-top:4px; }
+  .tp-scroll{ max-height: 300px; overflow-y:auto; padding-right:4px; }
+  .tp-all summary{ cursor:pointer; color: var(--text-lo, #8a96ad); font-size:11px; margin-top:8px; }
 
   /* ---------------- Landowner detail modal ---------------- */
   .lo-modal-backdrop{
@@ -745,8 +766,6 @@
   .money-filter-bar select:hover{ border-color: var(--blue-soft); }
   .money-filter-note{ font-size:11.5px; color: var(--text-lo); }
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
@@ -1452,7 +1471,9 @@ function recomputeData(){
     loCurr: curr.landowners[name] || 0,
     acPrev: prev.acres[name] || 0,
     acCurr: curr.acres[name] || 0,
-  }));
+  }))
+  // Statuses with no landowners and no acres in the selected week are left off the dashboard
+  .filter(d => d.loCurr > 0 || d.acCurr > 0);
   totalCurr = curr.totalAcres;
   totalPrev = prev.totalAcres;
   totalLoCurr = curr.totalLandowners;
@@ -1464,10 +1485,14 @@ recomputeData();
 // --- Leaflet / esri-leaflet live map config ---
 // LAYER INDEX: confirmed — layer 8 on the MapServer is the correct EPPS parcel layer.
 const ARCGIS_SERVICE_URL = 'https://maps.segland.com/arcgis/rest/services/Energy_Transfer/Epps_Gas_Storage/MapServer/8';
-const ARCGIS_STATUS_FIELD = 'MAIL_STATUS'; // assumed to match the weekly mapper export field name — confirm with GIS team if this service uses a different field
+const ARCGIS_STATUS_FIELD = 'Mail_Status'; // assumed to match the weekly mapper export field name — confirm with GIS team if this service uses a different field
 let leafletMap = null;
 let leafletParcelLayer = null;
 let leafletTokenRefreshTimer = null;
+const ARCGIS_TRACT_FIELD = 'Tract_ID'; // tract ID field on the ArcGIS layer — matches the dashboard's tract IDs
+let leafletHighlight = null;      // outline drawn around the selected tract
+let leafletSelectedTract = null;  // tract ID currently selected (from the list or the map)
+let leafletZoomedToTract = false; // true when the map moved because a list row was clicked
 
 // totalCurr/totalPrev/totalLoCurr/totalLoPrev are now computed in recomputeData() above
 
@@ -2442,6 +2467,8 @@ const STATUS_COLOR_MAP = {
 
 function renderAll(){
   recomputeData();
+  // If the selected status no longer exists this week, fall back to ALL
+  if(selected !== 'ALL' && !data.some(d => d.name === selected)) selected = 'ALL';
   renderPills();
   renderWeekSeg();
   renderHeader();
@@ -2493,7 +2520,10 @@ function renderLineListPills(){
   allBtn.onclick = ()=>{ lineListSelected = 'ALL'; renderLineListPills(); renderLineListTable(); };
   row.appendChild(allBtn);
 
-  LINE_LIST_STATUS_ORDER.forEach(name=>{
+  // Only show statuses that actually appear in the current Line List
+  const lineListStatuses = LINE_LIST_STATUS_ORDER.filter(n => eppsLineList.some(r => r.trStatus === n));
+  if(lineListSelected !== 'ALL' && !lineListStatuses.includes(lineListSelected)) lineListSelected = 'ALL';
+  lineListStatuses.forEach(name=>{
     const p = document.createElement('button');
     p.className = 'pill' + (name===lineListSelected ? ' active':'');
     const c = statusColor(name);
@@ -2732,7 +2762,10 @@ function renderIolPills(){
   allBtn.onclick = ()=>{ iolSelected = 'ALL'; renderIolPills(); renderIolTable(); };
   row.appendChild(allBtn);
 
-  IOL_STATUS_ORDER.forEach(name=>{
+  // Only show statuses that actually appear in the current IOL data
+  const iolStatuses = IOL_STATUS_ORDER.filter(n => buildIolRows().some(r => r.status === n));
+  if(iolSelected !== 'ALL' && !iolStatuses.includes(iolSelected)) iolSelected = 'ALL';
+  iolStatuses.forEach(name=>{
     const p = document.createElement('button');
     p.className = 'pill' + (name===iolSelected ? ' active':'');
     const c = statusColor(name);
@@ -3200,7 +3233,13 @@ function renderTractTable(instance){
       </tr>
     `).join('');
     tbody.querySelectorAll('tr[data-name]').forEach(tr=>{
-      tr.addEventListener('click', ()=> openLandownerModal(tr.getAttribute('data-name'), tr.getAttribute('data-tract')));
+      const tractId = tr.getAttribute('data-tract');
+      if(tractId === leafletSelectedTract) tr.classList.add('lo-row-selected');
+      tr.addEventListener('click', ()=>{
+        // Clicking the selected row again deselects it and zooms the map back out
+        if(tractId === leafletSelectedTract){ clearTractSelection(); return; }
+        selectTractOnMap(tractId, { zoom: true, owner: tr.getAttribute('data-name') });
+      });
     });
   }
 
@@ -3592,13 +3631,12 @@ async function initLeafletMap(){
         return { color: '#000', weight: 0.6, fillColor: statusColor(status) || '#888', fillOpacity: 0.75 };
       }
     }).addTo(leafletMap);
-   leafletParcelLayer.query().where('1=1').bounds((err, b) => {
-     if(!err && b && b.isValid()) leafletMap.fitBounds(b, { padding: [12,12] });
-   });
-    leafletParcelLayer.on('load', () => {
-      setLeafletStatus('');
-      const bounds = leafletParcelLayer.getBounds();
-      if(bounds.isValid()) leafletMap.fitBounds(bounds, { padding: [12,12] });
+    leafletParcelLayer.on('load', () => setLeafletStatus(''));
+
+    // Click a parcel on the map to see its owner(s) and details
+    leafletParcelLayer.on('click', (e) => {
+      const id = e.layer && e.layer.feature && e.layer.feature.properties[ARCGIS_TRACT_FIELD];
+      if(id) selectTractOnMap(id, { zoom: false, latlng: e.latlng });
     });
 
     leafletParcelLayer.on('requesterror', (e) => {
@@ -3612,11 +3650,185 @@ async function initLeafletMap(){
   }
 }
 
+function currentLeafletWhere(){
+  return selected === 'ALL' ? '1=1' : `${ARCGIS_STATUS_FIELD} = '${selected}'`;
+}
+
 function updateLeafletMapFilter(){
   if(!leafletParcelLayer) return;
-  const where = selected === 'ALL' ? '1=1' : `${ARCGIS_STATUS_FIELD} = '${selected}'`;
-  leafletParcelLayer.setWhere(where);
+  leafletParcelLayer.setWhere(currentLeafletWhere());
+  if(!leafletSelectedTract) refocusLeafletMap();
 }
+
+/* Zooms the map to fit every parcel matching the current status filter
+   (falls back to all parcels if the filter matches nothing on the layer). */
+function refocusLeafletMap(){
+  if(!leafletParcelLayer) return;
+  const fit = (b) => leafletMap.fitBounds(b, { padding: [12,12], maxZoom: 16 });
+  leafletParcelLayer.query().where(currentLeafletWhere()).bounds((err, b) => {
+    if(!err && b && b.isValid()) return fit(b);
+    leafletParcelLayer.query().where('1=1').bounds((err2, b2) => {
+      if(!err2 && b2 && b2.isValid()) fit(b2);
+    });
+  });
+}
+
+/* ---------------- Tract selection (list <-> map) ---------------- */
+function escHtml(v){
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtVal(v){
+  if(typeof v === 'number') return v.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return escHtml(v);
+}
+
+function buildTractPopup(tractId, props){
+  props = props || {};
+  const owners = (typeof eppsLineList !== 'undefined') ? eppsLineList.filter(r => String(r.tractId) === String(tractId)) : [];
+  const status = props[ARCGIS_STATUS_FIELD] || (owners[0] && owners[0].trStatus) || '—';
+  const acres = props.calc_acreage != null ? props.calc_acreage : (owners[0] && owners[0].gross);
+
+  const summary = [
+    ['Status', `<span class="tp-chip" style="background:${statusColor(status)}">${escHtml(status)}</span>`],
+    ['County', props.county_name || (owners[0] && owners[0].county)],
+    ['Parcel ID', props.parcel_id],
+    ['Sec-Twp-Rng', props.section_township_range],
+    ['Tract Type', props.Tract_Type],
+    ['Gross Acres', acres],
+    ['AOI Acres', props.AOI_Ac],
+    ['Pipe Ft', props.Pipe_Ft],
+    ['Agent', props.Agent || (owners[0] && owners[0].assigned)],
+  ].filter(([,v]) => v != null && v !== '' && v !== '0')
+   .map(([k,v]) => `<div class="tp-lbl">${k}</div><div>${typeof v === 'string' && v.startsWith('<span') ? v : fmtVal(v)}</div>`).join('');
+
+  let ownersHtml;
+  if(owners.length){
+    ownersHtml = owners.map(o => {
+      const note = (typeof landownerDetails !== 'undefined' && landownerDetails[o.landowner] && landownerDetails[o.landowner].lastNote) || null;
+      return `<div class="tp-owner">
+        <button type="button" data-owner="${escHtml(o.landowner)}" data-tract="${escHtml(tractId)}" title="Open full landowner details">${escHtml(o.landowner)}</button>
+        <div class="tp-owner-meta">
+          <span class="tp-chip" style="background:${statusColor(o.loStatus)}">${escHtml(o.loStatus)}</span>
+          · Interest ${o.interest != null ? o.interest.toLocaleString('en-US', {maximumFractionDigits:6}) : '—'}
+          · ${o.acres.toLocaleString('en-US', {maximumFractionDigits:2})} net ac
+          · ${escHtml(o.assigned || '')}
+        </div>
+        ${note ? `<div class="tp-note"><span class="tp-owner-meta">${escHtml(note.date)}</span><br>${escHtml(note.text)}</div>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    ownersHtml = `<div class="tp-owner"><strong>${escHtml(props.owner || 'Unknown owner')}</strong>
+      <div class="tp-owner-meta">Not in this week's Line List</div></div>`;
+  }
+
+  const agentNote = props.Agent_Note ? `<div class="tp-head">Agent Note (map layer)</div><div class="tp-note">${escHtml(props.Agent_Note)}</div>` : '';
+  const legal = props.legal_desc1 && props.legal_desc1 !== '0' ? `<div class="tp-head">Legal Description</div><div>${escHtml(props.legal_desc1)}</div>` : '';
+
+  const skip = new Set(['Shape_Area','Shape_Length','OBJECTID']);
+  const allRows = Object.keys(props).filter(k => !skip.has(k) && props[k] != null && props[k] !== '')
+    .map(k => `<div class="tp-lbl">${escHtml(k)}</div><div>${fmtVal(props[k])}</div>`).join('');
+  const allFields = allRows ? `<details class="tp-all"><summary>All map layer fields</summary><div class="tp-grid">${allRows}</div></details>` : '';
+
+  return `<div class="tp-scroll">
+    <div class="tp-id">${escHtml(tractId)}</div>
+    <div class="tp-grid">${summary}</div>
+    <div class="tp-head">Landowner${owners.length === 1 ? '' : 's'} (${owners.length || 1})</div>
+    ${ownersHtml}
+    ${agentNote}${legal}${allFields}
+  </div>`;
+}
+
+function markSelectedRows(tractId){
+  document.querySelectorAll('#loTable tbody tr[data-tract]').forEach(tr => {
+    tr.classList.toggle('lo-row-selected', tractId != null && tr.getAttribute('data-tract') === String(tractId));
+  });
+}
+
+let leafletSuppressPopupClose = false;
+function removeTractHighlight(){
+  if(leafletHighlight){
+    leafletSuppressPopupClose = true;
+    leafletMap.removeLayer(leafletHighlight);
+    leafletSuppressPopupClose = false;
+    leafletHighlight = null;
+  }
+}
+
+/* Selects a tract: outlines it, opens its info popup, highlights its row(s) in the list.
+   opts.zoom = true pans/zooms the map to it (used when a list row is clicked). */
+function selectTractOnMap(tractId, opts){
+  opts = opts || {};
+  if(!leafletMap || !leafletParcelLayer){
+    // Map not ready — fall back to the detail popup so the click still does something
+    if(opts.owner) openLandownerModal(opts.owner, tractId);
+    return;
+  }
+  removeTractHighlight();
+  leafletSelectedTract = String(tractId);
+  if(opts.zoom) leafletZoomedToTract = true;
+  markSelectedRows(leafletSelectedTract);
+
+  const safeId = String(tractId).replace(/'/g, "''");
+  // Queried without the status filter, so the tract can be found even if the map is filtered
+  leafletParcelLayer.query().where(`${ARCGIS_TRACT_FIELD} = '${safeId}'`).run((err, fc) => {
+    if(leafletSelectedTract !== String(tractId)) return; // a different tract was picked meanwhile
+    if(err || !fc || !fc.features || !fc.features.length){
+      setLeafletStatus(`Tract ${tractId} isn't on the map layer.`);
+      setTimeout(() => { if(document.getElementById('leafletMapStatus').textContent.startsWith('Tract ')) setLeafletStatus(''); }, 4000);
+      return;
+    }
+    const props = fc.features[0].properties || {};
+    leafletHighlight = L.geoJSON(fc, {
+      style: { color: '#00e5ff', weight: 3.5, fillColor: statusColor(props[ARCGIS_STATUS_FIELD]) || '#888', fillOpacity: 0.35 },
+      interactive: false,
+    }).addTo(leafletMap);
+
+    const bounds = leafletHighlight.getBounds();
+    const hl = leafletHighlight;
+    const popup = L.popup({ className: 'tract-popup', maxWidth: 360, autoPanPadding: [20,20] })
+      .setContent(buildTractPopup(tractId, props));
+    hl.bindPopup(popup);
+    hl.on('popupclose', () => { if(!leafletSuppressPopupClose) clearTractSelection(); });
+    // Open the popup once the map has finished moving, so it isn't clipped mid-zoom
+    const openIt = () => { if(leafletHighlight === hl) hl.openPopup(opts.latlng || bounds.getCenter()); };
+    if(opts.zoom && bounds.isValid()){
+      leafletMap.once('moveend', openIt);
+      leafletMap.fitBounds(bounds, { padding: [60,60], maxZoom: 16 });
+    } else {
+      openIt();
+    }
+  });
+}
+
+/* Deselects the tract; if the map had zoomed in for it, zooms back out to the filtered extent. */
+function clearTractSelection(){
+  if(!leafletSelectedTract) return;
+  const wasZoomed = leafletZoomedToTract;
+  leafletSelectedTract = null;
+  leafletZoomedToTract = false;
+  removeTractHighlight();
+  if(leafletMap) leafletMap.closePopup();
+  markSelectedRows(null);
+  if(wasZoomed) refocusLeafletMap();
+}
+
+// Landowner names in the popup open the full landowner detail window
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest && e.target.closest('.tract-popup button[data-owner]');
+  if(btn) openLandownerModal(btn.getAttribute('data-owner'), btn.getAttribute('data-tract'));
+});
+
+// Clicking anywhere outside the list, the map, and the detail window deselects the tract
+document.addEventListener('click', (e) => {
+  if(!leafletSelectedTract) return;
+  const t = e.target;
+  if(!t.closest) return;
+  if(t.closest('#loTable') || t.closest('#leafletMap') || t.closest('#loModalBackdrop') || t.closest('#loSearchInput')) return;
+  clearTractSelection();
+});
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && !document.getElementById('loModalBackdrop').classList.contains('open')) clearTractSelection();
+});
 
 initLeafletMap();
 </script>
