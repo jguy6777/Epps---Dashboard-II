@@ -3779,7 +3779,9 @@ function buildTractPopup(tractId, props){
       <div class="tp-owner-meta">Not in this week's Line List</div></div>`;
   }
 
-  const agentNote = props.Agent_Note ? `<div class="tp-head">Agent Note (map layer)</div><div class="tp-note">${escHtml(props.Agent_Note)}</div>` : '';
+  // The map layer's Agent_Note usually repeats the dated note, so only show it when no owner on this tract has a dated note
+  const hasDatedNote = owners.some(o => typeof landownerDetails !== 'undefined' && landownerDetails[o.landowner] && landownerDetails[o.landowner].lastNote);
+  const agentNote = (props.Agent_Note && !hasDatedNote) ? `<div class="tp-head">Agent Note</div><div class="tp-note">${escHtml(props.Agent_Note)}</div>` : '';
   const legal = props.legal_desc1 && props.legal_desc1 !== '0' ? `<div class="tp-head">Legal Description</div><div>${escHtml(props.legal_desc1)}</div>` : '';
 
   const skip = new Set(['Shape_Area','Shape_Length','OBJECTID']);
