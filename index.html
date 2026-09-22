@@ -571,7 +571,7 @@
   .tp-owner-meta{ color: var(--text-lo, #8a96ad); font-size:11px; }
   .tp-chip{ display:inline-block; padding:1px 6px; border-radius:4px; color:#0b0f1a; font-size:10px; font-weight:600; }
   .tp-note{ background: rgba(255,255,255,0.04); border-radius:6px; padding:6px 8px; margin-top:4px; }
-  .tp-scroll{ max-height: min(460px, 60vh); overflow-y:auto; padding-right:4px; }
+  .tp-scroll{ overscroll-behavior: contain; max-height: min(460px, 60vh); overflow-y:auto; padding-right:4px; }
   .map-legend{
     background: rgba(12,20,36,0.92); color: var(--text-hi, #e8edf7);
     border:1px solid var(--border, #26324a); border-radius:8px; padding:10px 12px;
@@ -3871,6 +3871,18 @@ function clearTractSelection(){
   // Always zoom back out to the filtered parcels, whether the tract was picked from the list or the map
   refocusLeafletMap();
 }
+
+// While the mouse is over a tract popup, the scroll wheel scrolls the popup only —
+// never the dashboard behind it or the map zoom (even when the popup is at its top/bottom
+// or its content is short enough not to need scrolling).
+document.addEventListener('wheel', (e) => {
+  const pop = e.target.closest && e.target.closest('.tract-popup');
+  if(!pop) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const sc = pop.querySelector('.tp-scroll');
+  if(sc) sc.scrollTop += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? sc.clientHeight : 1);
+}, { passive: false, capture: true });
 
 // Landowner names in the popup open the full landowner detail window
 document.addEventListener('click', (e) => {
