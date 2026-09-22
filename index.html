@@ -3683,8 +3683,8 @@ async function initLeafletMap(){
       if(el && el.textContent.startsWith('Loading')) setLeafletStatus('');
     });
 
-    // Clickable status legend (top-right corner of the map)
-    leafletLegendControl = L.control({ position: 'topright' });
+    // Clickable status legend (bottom-right corner of the map)
+    leafletLegendControl = L.control({ position: 'bottomright' });
     leafletLegendControl.onAdd = () => {
       const div = L.DomUtil.create('div', 'map-legend');
       div.id = 'mapLegendBox';
