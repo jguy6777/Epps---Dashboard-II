@@ -585,6 +585,20 @@
   .map-legend-item.dim{ opacity:0.5; }
   .map-legend-item .sw{ width:12px; height:12px; border-radius:3px; flex-shrink:0; border:1px solid rgba(0,0,0,0.4); }
   .map-legend-item .nm{ flex:1; }
+  .map-legend-key{ display:flex; align-items:center; gap:8px; padding:6px 6px 2px; margin-top:4px; border-top:1px solid var(--border, #26324a); color: var(--text-mid, #b6c0d4); }
+  .map-legend-key .ln{ width:12px; height:0; border-top:3px solid #a80000; flex-shrink:0; }
+  .map-legend-toggle{ display:flex; align-items:center; gap:8px; padding:3px 6px; cursor:pointer; color: var(--text-mid, #b6c0d4); }
+  .map-legend-toggle input{ margin:0; accent-color:#73b2ff; cursor:pointer; }
+  .map-legend-toggle .ln{ width:12px; height:0; flex-shrink:0; }
+  .map-legend-toggle .ln-sec{ border-top:2px solid #9c9c9c; }
+  .map-legend-toggle .ln-twp{ border-top:3px solid #000; box-shadow: 0 0 0 1px rgba(255,255,255,0.35); }
+  .leaflet-tooltip.str-label{ background:none; border:none; box-shadow:none; padding:0; pointer-events:none;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; color:#1b1f27;
+    text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff; }
+  .leaflet-tooltip.str-label::before{ display:none; }
+  .leaflet-tooltip.str-sec{ font-size:13px; }
+  .leaflet-tooltip.str-twp{ font-size:15px; font-weight:700; letter-spacing:.02em; }
+  #leafletMap.hide-sec-labels .leaflet-tooltip.str-sec{ display:none; }
   .map-legend-item .ct{ font-family:'JetBrains Mono', monospace; color: var(--text-lo, #8a96ad); font-size:11px; }
   .tp-all summary{ cursor:pointer; color: var(--text-lo, #8a96ad); font-size:11px; margin-top:8px; }
 
@@ -1501,6 +1515,13 @@ let leafletParcelLayer = null;
 let leafletTokenRefreshTimer = null;
 const ARCGIS_TRACT_FIELD = 'Tract_ID'; // tract ID field on the ArcGIS layer — matches the dashboard's tract IDs
 let leafletHighlight = null;      // outline drawn around the selected tract
+let leafletBoundaryLayer = null;  // red project boundary (AOI) outline
+let leafletSectionsLayer = null;  // section lines + section numbers (layer 4)
+let leafletTownshipsLayer = null; // township lines + township-range labels (layer 5)
+let leafletShowSections = true;
+let leafletShowTownships = true;
+// Project boundary layer on the same MapServer — "EPPS Gas Storage Project" (layer 7)
+const ARCGIS_BOUNDARY_URL = ARCGIS_SERVICE_URL.replace(/\/\d+$/, '/7');
 let leafletSelectedTract = null;  // tract ID currently selected (from the list or the map)
 let leafletZoomedToTract = false; // true when the map moved because a list row was clicked
 
@@ -1563,7 +1584,18 @@ function renderMapLegend(){
   };
   box.innerHTML = `<div class="map-legend-title">Status · click to filter</div>` +
     item('ALL', 'All statuses', null, null) +
-    data.map(d => item(d.name, d.name.charAt(0) + d.name.slice(1).toLowerCase(), statusColor(d.name), d.loCurr)).join('');
+    data.map(d => item(d.name, d.name.charAt(0) + d.name.slice(1).toLowerCase(), statusColor(d.name), d.loCurr)).join('') +
+    `<div class="map-legend-key"><span class="ln"></span><span>Project boundary</span></div>` +
+    `<label class="map-legend-toggle"><input type="checkbox" data-str="sections" ${leafletShowSections ? 'checked' : ''}><span class="ln ln-sec"></span>Sections</label>` +
+    `<label class="map-legend-toggle"><input type="checkbox" data-str="townships" ${leafletShowTownships ? 'checked' : ''}><span class="ln ln-twp"></span>Townships</label>`;
+  box.querySelectorAll('input[data-str]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const isSec = cb.getAttribute('data-str') === 'sections';
+      const layer = isSec ? leafletSectionsLayer : leafletTownshipsLayer;
+      if(isSec) leafletShowSections = cb.checked; else leafletShowTownships = cb.checked;
+      if(layer && leafletMap){ if(cb.checked) layer.addTo(leafletMap); else leafletMap.removeLayer(layer); }
+    });
+  });
   box.querySelectorAll('.map-legend-item').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -3645,6 +3677,9 @@ async function refreshLeafletToken(){
   try{
     const { token, expires } = await fetchArcgisToken();
     if(leafletParcelLayer) leafletParcelLayer.authenticate(token);
+    if(leafletBoundaryLayer) leafletBoundaryLayer.authenticate(token);
+    if(leafletSectionsLayer) leafletSectionsLayer.authenticate(token);
+    if(leafletTownshipsLayer) leafletTownshipsLayer.authenticate(token);
     scheduleTokenRefresh(expires);
   } catch(e){
     setLeafletStatus('Could not refresh map access — the map may stop updating until this page is reloaded.');
@@ -3661,6 +3696,61 @@ async function initLeafletMap(){
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
       maxZoom: 19
+    }).addTo(leafletMap);
+
+    // Section / township grid (STR): drawn above the parcels, below the project boundary, and ignores clicks
+    leafletMap.createPane('strPane');
+    leafletMap.getPane('strPane').style.zIndex = 430;
+    leafletMap.getPane('strPane').style.pointerEvents = 'none';
+    const strBase = ARCGIS_SERVICE_URL.replace(/\/\d+$/, '');
+    leafletSectionsLayer = L.esri.featureLayer({
+      url: strBase + '/4',
+      token: token,
+      pane: 'strPane',
+      interactive: false,
+      style: () => ({ color: '#9c9c9c', weight: 1.5, fill: false }),
+      onEachFeature: (f, layer) => {
+        const n = f.properties && String(f.properties.SECTN || '').trim();
+        if(n) layer.bindTooltip(String(n), { permanent: true, direction: 'center', className: 'str-label str-sec' });
+      }
+    });
+    const twpLabelOwner = {};
+    leafletTownshipsLayer = L.esri.featureLayer({
+      url: strBase + '/5',
+      token: token,
+      pane: 'strPane',
+      interactive: false,
+      style: () => ({ color: '#000000', weight: 2.5, fill: false }),
+      onEachFeature: (f, layer) => {
+        const t = f.properties && String(f.properties.TOWN_RANGE || [f.properties.TOWNSHIP, f.properties.RANGE].filter(Boolean).join(' - ')).trim();
+        if(!t) return;
+        // Some townships are split into several pieces — label only the largest piece so each name shows once
+        const b = L.geoJSON(f).getBounds();
+        const area = (b.getNorth() - b.getSouth()) * (b.getEast() - b.getWest());
+        const cur = twpLabelOwner[t];
+        if(cur && cur.area >= area) return;
+        if(cur) cur.layer.unbindTooltip();
+        twpLabelOwner[t] = { area, layer };
+        layer.bindTooltip(t, { permanent: true, direction: 'center', className: 'str-label str-twp' });
+      }
+    });
+    if(leafletShowSections) leafletSectionsLayer.addTo(leafletMap);
+    if(leafletShowTownships) leafletTownshipsLayer.addTo(leafletMap);
+    // Section numbers get crowded when zoomed far out — hide them below zoom 12
+    const updateStrLabels = () => document.getElementById('leafletMap').classList.toggle('hide-sec-labels', leafletMap.getZoom() < 12);
+    leafletMap.on('zoomend', updateStrLabels);
+    updateStrLabels();
+
+    // Project boundary: drawn in its own pane above the parcels, and ignores clicks so parcels stay clickable
+    leafletMap.createPane('boundaryPane');
+    leafletMap.getPane('boundaryPane').style.zIndex = 450;
+    leafletMap.getPane('boundaryPane').style.pointerEvents = 'none';
+    leafletBoundaryLayer = L.esri.featureLayer({
+      url: ARCGIS_BOUNDARY_URL,
+      token: token,
+      pane: 'boundaryPane',
+      interactive: false,
+      style: () => ({ color: '#a80000', weight: 3, fill: false, fillOpacity: 0 })
     }).addTo(leafletMap);
 
     leafletParcelLayer = L.esri.featureLayer({
