@@ -3858,16 +3858,16 @@ function selectTractOnMap(tractId, opts){
   });
 }
 
-/* Deselects the tract; if the map had zoomed in for it, zooms back out to the filtered extent. */
+/* Deselects the tract and zooms the map back out to the filtered extent. */
 function clearTractSelection(){
   if(!leafletSelectedTract) return;
-  const wasZoomed = leafletZoomedToTract;
   leafletSelectedTract = null;
   leafletZoomedToTract = false;
   removeTractHighlight();
   if(leafletMap) leafletMap.closePopup();
   markSelectedRows(null);
-  if(wasZoomed) refocusLeafletMap();
+  // Always zoom back out to the filtered parcels, whether the tract was picked from the list or the map
+  refocusLeafletMap();
 }
 
 // Landowner names in the popup open the full landowner detail window
