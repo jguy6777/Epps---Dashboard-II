@@ -3787,7 +3787,7 @@ function buildTractPopup(tractId, props){
   const skip = new Set(['Shape_Area','Shape_Length','OBJECTID']);
   const allRows = Object.keys(props).filter(k => !skip.has(k) && props[k] != null && props[k] !== '')
     .map(k => `<div class="tp-lbl">${escHtml(k)}</div><div>${fmtVal(props[k])}</div>`).join('');
-  const allFields = allRows ? `<details class="tp-all"><summary>All map layer fields</summary><div class="tp-grid">${allRows}</div></details>` : '';
+  const allFields = allRows ? `<details class="tp-all" open><summary>All map layer fields</summary><div class="tp-grid">${allRows}</div></details>` : '';
 
   return `<div class="tp-scroll">
     <div class="tp-id">${escHtml(tractId)}</div>
