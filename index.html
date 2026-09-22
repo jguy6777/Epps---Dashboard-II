@@ -3675,7 +3675,13 @@ async function initLeafletMap(){
         return { color: '#000', weight: 0.6, fillColor: statusColor(status) || '#888', fillOpacity: 0.75 };
       }
     }).addTo(leafletMap);
-    leafletParcelLayer.on('load', () => setLeafletStatus(''));
+    // Clear the "Loading…" message once parcel data arrives. ('load' alone isn't reliable —
+    // esri-leaflet doesn't fire it after the status filter is applied, so listen for each
+    // successful data request too.)
+    leafletParcelLayer.on('load requestsuccess', () => {
+      const el = document.getElementById('leafletMapStatus');
+      if(el && el.textContent.startsWith('Loading')) setLeafletStatus('');
+    });
 
     // Clickable status legend (top-right corner of the map)
     leafletLegendControl = L.control({ position: 'topright' });
