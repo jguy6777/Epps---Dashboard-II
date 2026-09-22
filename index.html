@@ -558,9 +558,9 @@
     background: var(--panel-elev, #141c2e); color: var(--text-hi, #e8edf7);
     border:1px solid var(--border, #26324a); box-shadow: 0 12px 36px rgba(0,0,0,0.5);
   }
-  .tract-popup .leaflet-popup-content{ margin: 14px 16px; font-size:12px; line-height:1.45; width:320px !important; }
+  .tract-popup .leaflet-popup-content{ margin: 16px 18px; font-size:13px; line-height:1.5; width:420px !important; }
   .tract-popup a.leaflet-popup-close-button{ color: var(--text-lo, #8a96ad); }
-  .tp-id{ font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .tp-id{ font-family:'JetBrains Mono', monospace; font-size:14px; font-weight:600; margin-bottom:6px; }
   .tp-grid{ display:grid; grid-template-columns: auto 1fr; gap:3px 12px; margin:8px 0; }
   .tp-lbl{ color: var(--text-lo, #8a96ad); font-size:10px; text-transform:uppercase; letter-spacing:.05em; padding-top:2px; }
   .tp-head{ color: var(--text-lo, #8a96ad); font-size:10px; text-transform:uppercase; letter-spacing:.06em; margin:10px 0 4px; border-top:1px solid var(--border, #26324a); padding-top:8px; }
@@ -571,7 +571,7 @@
   .tp-owner-meta{ color: var(--text-lo, #8a96ad); font-size:11px; }
   .tp-chip{ display:inline-block; padding:1px 6px; border-radius:4px; color:#0b0f1a; font-size:10px; font-weight:600; }
   .tp-note{ background: rgba(255,255,255,0.04); border-radius:6px; padding:6px 8px; margin-top:4px; }
-  .tp-scroll{ max-height: 300px; overflow-y:auto; padding-right:4px; }
+  .tp-scroll{ max-height: min(460px, 60vh); overflow-y:auto; padding-right:4px; }
   .map-legend{
     background: rgba(12,20,36,0.92); color: var(--text-hi, #e8edf7);
     border:1px solid var(--border, #26324a); border-radius:8px; padding:10px 12px;
@@ -3843,7 +3843,7 @@ function selectTractOnMap(tractId, opts){
 
     const bounds = leafletHighlight.getBounds();
     const hl = leafletHighlight;
-    const popup = L.popup({ className: 'tract-popup', maxWidth: 360, autoPanPadding: [20,20] })
+    const popup = L.popup({ className: 'tract-popup', maxWidth: 460, autoPanPadding: [20,20] })
       .setContent(buildTractPopup(tractId, props));
     hl.bindPopup(popup);
     hl.on('popupclose', () => { if(!leafletSuppressPopupClose) clearTractSelection(); });
