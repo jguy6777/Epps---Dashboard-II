@@ -704,7 +704,8 @@
     opacity:0;
     pointer-events:none;
   }
-  .header-left{ display:flex; align-items:center; gap:28px; flex-wrap:wrap; }
+  .header-left{ display:flex; align-items:center; gap:28px; flex-wrap:wrap; flex:1; min-width:0; }
+  .header-left .tab-bar{ margin: 0 auto; } /* centers the tabs in the space between the title and the header stats */
   .tab-bar{
     display:flex;
     gap:8px;
