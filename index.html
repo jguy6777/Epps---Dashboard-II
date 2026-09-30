@@ -872,6 +872,98 @@
     .rbtn{ flex:1; min-width:64px; }
     .ov-grid{ grid-template-columns: 1fr; }
   }
+
+  /* ---------------- Line List: status explorer ---------------- */
+  /* The Line List table is kept (hidden) only because the Excel exports read from it */
+  #tabPanel-tracts > .section-head, #tabPanel-tracts > .lo-panel{ display:none; }
+  .ll-wrap{ display:grid; grid-template-columns: minmax(0,1fr) 360px; gap:14px; margin-bottom:10px; align-items:stretch; }
+  .ll-card{ padding:16px 18px 12px; }
+  .ll-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
+  .ll-head h2{ font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:600; color: var(--text-hi); }
+  .ll-head .sub{ font-size:11.5px; color: var(--text-lo); margin-top:3px; }
+  .ll-tools{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .ll-find{ width:240px; font:500 13px 'Inter',sans-serif; color: var(--text-hi); background: var(--panel-elev); border:1px solid var(--border);
+    border-radius:12px; padding:8px 12px; outline:none; box-shadow: inset 0 1px 2px rgba(15,23,42,.06); }
+  .ll-find:focus{ border-color: var(--blue-soft); box-shadow: 0 0 0 3px var(--blue-glow); }
+  .ll-stage{ position:relative; display:grid; grid-template-columns: 170px 230px minmax(260px,1fr); min-height:690px; margin-top:6px; }
+  .ll-svg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
+  .ll-svg path{ fill:none; stroke-linecap:round; }
+  .ll-col{ position:relative; z-index:1; }
+  .ll-orbcol{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; padding-right:18px; }
+  .ll-proj{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; color: var(--text-hi); }
+  .ll-proj-sub{ font-size:11.5px; color: var(--text-lo); margin-top:2px; }
+  .ll-orbwrap{ all:unset; cursor:pointer; position:relative; width:142px; height:142px; border-radius:50%; display:grid; place-items:center;
+    background: radial-gradient(circle, color-mix(in srgb, var(--blue) 12%, transparent) 0 55%, transparent 72%); border:1px solid var(--border-soft); }
+  .ll-orbwrap svg{ position:absolute; inset:0; width:100%; height:100%; animation: llspin 60s linear infinite; }
+  @keyframes llspin{ to{ transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce){ .ll-orbwrap svg{ animation:none; } }
+  .ll-orb{ width:72px; height:72px; border-radius:50%;
+    background: radial-gradient(circle at 34% 30%, #eef4fc 0%, #a9c1e0 14%, #5b7eaa 42%, #2d4a73 72%, #1a2c47 100%);
+    box-shadow: 0 10px 26px rgba(20,40,70,.35), inset -6px -8px 16px rgba(0,0,0,.25); transition: transform .25s ease; }
+  .ll-orbwrap:hover .ll-orb{ transform: scale(1.05); }
+  .ll-chip{ display:inline-flex; align-items:center; gap:4px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color: var(--text-mid);
+    background: var(--panel-elev); border:1px solid var(--border-soft); border-radius:6px; padding:2px 7px; white-space:nowrap; }
+  .ll-chip.st{ font-family:'Inter',sans-serif; font-weight:700; font-size:9.5px; color:#0b0f1a; border:none; background: var(--sx-c); box-shadow: inset 0 0 0 1px rgba(15,23,42,.15); }
+  .ll-statcol{ display:flex; flex-direction:column; justify-content:center; gap:10px; }
+  .ll-stat{ all:unset; box-sizing:border-box; cursor:pointer; display:grid; grid-template-columns: 10px 44px 1fr; align-items:center; gap:8px;
+    min-height:50px; padding:8px 12px; border-radius:11px; background: var(--panel-elev); border:1px solid var(--border-soft);
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease, opacity .2s ease; }
+  .ll-stat:hover{ border-color: var(--blue-soft); transform: translateX(2px); }
+  .ll-stat .dot{ width:9px; height:9px; border-radius:50%; background: var(--sx-c); box-shadow: inset 0 0 0 1px rgba(15,23,42,.2); }
+  .ll-stat .n{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:19px; color: var(--text-hi); }
+  .ll-stat .lb{ font-size:12px; color: var(--text-mid); line-height:1.25; }
+  .ll-stat.active{ border-color: var(--sx-c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sx-c) 30%, transparent); }
+  .ll-stat.active .lb{ color: var(--text-hi); font-weight:600; }
+  .ll-namecol{ padding-left:70px; display:flex; flex-direction:column; justify-content:center; gap:6px; overscroll-behavior:contain; }
+  .ll-cardn{ all:unset; box-sizing:border-box; cursor:pointer; display:block; width: calc(100% - 76px); max-width:340px;
+    padding:6px 10px 7px; border-radius:9px; background: var(--panel-elev); border:1px solid var(--border-soft);
+    transform: translateX(var(--dx,0px)); transition: transform .35s cubic-bezier(.3,.7,.3,1), opacity .3s ease, border-color .15s ease, box-shadow .15s ease;
+    animation: llin .3s ease both; animation-delay: var(--d,0ms); }
+  @keyframes llin{ from{ opacity:0; transform: translateX(calc(var(--dx,0px) - 14px)); } }
+  .ll-cardn:hover{ border-color: var(--blue-soft); }
+  .ll-cardn.fade{ opacity:.45; }
+  .ll-cardn.sel{ border-color: var(--sx-c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sx-c) 28%, transparent); opacity:1; }
+  .ll-cardn .nm{ font-size:11.5px; font-weight:700; letter-spacing:.02em; color: var(--text-hi); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ll-cardn .meta{ display:flex; align-items:center; gap:5px; margin-top:4px; flex-wrap:nowrap; overflow:hidden; }
+  .ll-empty{ font-size:12.5px; color: var(--text-lo); padding:20px 0; }
+  .ll-foot{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; font-size:11.5px; color: var(--text-lo); flex-wrap:wrap; }
+  .ll-more{ display:flex; gap:6px; }
+  .ll-more button{ all:unset; cursor:pointer; font:600 11px 'Inter',sans-serif; color: var(--text-mid); padding:5px 11px; border-radius:999px; background: var(--panel-elev); border:1px solid var(--border-soft); }
+  .ll-more button:hover{ color: var(--text-hi); border-color: var(--blue-soft); }
+  .ll-more button[disabled]{ opacity:.4; cursor:default; }
+  /* detail panel */
+  .ll-detail{ padding:16px; gap:12px; overflow:auto; max-height:820px; }
+  .ll-back{ all:unset; cursor:pointer; font:600 12px 'Inter',sans-serif; color: var(--link); }
+  .ll-back:hover{ text-decoration:underline; }
+  .ll-kind{ display:flex; align-items:center; gap:10px; font-size:12.5px; color: var(--text-mid); }
+  .ll-kind i{ width:30px; height:30px; border-radius:9px; display:grid; place-items:center; color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 32%, transparent); }
+  .ll-kind i svg{ width:16px; height:16px; }
+  .ll-dname{ font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:700; color: var(--text-hi); line-height:1.2; overflow-wrap:anywhere; }
+  .ll-dline{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color: var(--text-mid); }
+  .ll-tiles{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .ll-tile{ background: var(--panel-elev); border:1px solid var(--border-soft); border-radius:12px; padding:10px 12px; }
+  .ll-tile b{ display:block; font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:700; color: var(--text-hi); }
+  .ll-tile span{ font-size:11.5px; color: var(--text-lo); }
+  .ll-sec{ font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color: var(--text-lo); margin-top:2px; }
+  .ll-rows{ display:flex; flex-direction:column; gap:6px; }
+  .ll-r{ all:unset; box-sizing:border-box; cursor:pointer; display:grid; grid-template-columns: 9px minmax(0,1fr) auto; gap:8px; align-items:center;
+    padding:8px 10px; border-radius:10px; background: var(--panel-elev); border:1px solid var(--border-soft); font-size:12px; color: var(--text-hi); }
+  .ll-r:hover{ border-color: var(--blue-soft); }
+  .ll-r .dot{ width:9px; height:9px; border-radius:50%; background: var(--sx-c); }
+  .ll-r .nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ll-r .nm small{ display:block; font-size:10.5px; color: var(--text-lo); }
+  .ll-r .v{ font-family:'JetBrains Mono',monospace; font-size:11px; color: var(--text-mid); text-align:right; white-space:nowrap; }
+  .ll-contact{ background: var(--panel-elev); border:1px solid var(--border-soft); border-radius:10px; padding:9px 12px; font-size:12px; color: var(--text-hi); line-height:1.45; }
+  .ll-contact small{ display:block; color: var(--text-lo); font-size:11px; }
+  .ll-contact a{ color: var(--link); }
+  .ll-btns{ display:flex; gap:8px; }
+  .ll-btn{ flex:1; text-align:center; cursor:pointer; font:600 12.5px 'Inter',sans-serif; padding:10px 12px; border-radius:10px;
+    border:1px solid var(--blue); background: var(--blue-soft); color: var(--on-soft); }
+  .ll-btn.ghost{ background: var(--panel-elev); color: var(--text-hi); border-color: var(--border); }
+  .ll-btn:hover{ box-shadow: 0 0 0 3px var(--blue-glow); }
+  @media (max-width: 1500px){ .ll-stage{ grid-template-columns: 200px minmax(0,1fr); } .ll-orbcol{ display:none; } .ll-namecol{ padding-left:52px; } }
+  @media (max-width: 1180px){ .ll-wrap{ grid-template-columns: 1fr; } .ll-detail{ max-height:none; } }
+  @media (max-width: 700px){ .ll-stage{ grid-template-columns: 1fr; } .ll-svg{ display:none; } .ll-namecol{ padding-left:0; margin-top:10px; } .ll-cardn{ width:100%; max-width:none; transform:none; } }
   .lo-empty{ text-align:center; color:var(--text-lo); padding:24px; font-size:13px; }
   .lo-note{ font-size:11.5px; color:var(--text-lo); margin-top:12px; line-height:1.5; }
   table.lo-table tbody tr{ cursor:pointer; }
@@ -1663,10 +1755,38 @@
   </div>
 
   <div id="tabPanel-tracts" class="tab-panel">
+  <div class="ll-wrap">
+    <section class="ov-card ll-card">
+      <div class="ll-head">
+        <div><h2>Status explorer</h2>
+          <div class="sub" id="llSub">Numbers are landowners · click a status to fan out its landowners · click a name for details</div></div>
+        <div class="ll-tools">
+          <div class="ov-seg" id="llMode"><button type="button" data-m="owner" aria-pressed="true">By landowner</button><button type="button" data-m="tract" aria-pressed="false">By tract</button></div>
+          <input type="search" class="ll-find" id="llFind" placeholder="Find a landowner or tract…" autocomplete="off">
+          <button class="lo-export-btn" id="loExportBtn2" type="button" title="Download the full Line List as an Excel file">⬇ Export to Excel</button>
+          <button class="lo-export-btn" id="loExportBtnNotes2" type="button" title="Download the full Line List with each landowner's last note">⬇ Export with Notes</button>
+        </div>
+      </div>
+      <div class="ll-stage" id="llStage">
+        <svg class="ll-svg" id="llSvg" aria-hidden="true"></svg>
+        <div class="ll-col ll-orbcol">
+          <div><div class="ll-proj">EPPS Gas Storage</div><div class="ll-proj-sub" id="llProjSub"></div></div>
+          <button type="button" class="ll-orbwrap" id="llOrb" title="All statuses"><svg viewBox="0 0 142 142" id="llOrbDots"></svg><span class="ll-orb"></span></button>
+          <span class="ll-chip" id="llProjAc"></span>
+        </div>
+        <div class="ll-col ll-statcol" id="llStatCol"></div>
+        <div class="ll-col ll-namecol" id="llNameCol"></div>
+      </div>
+      <div class="ll-foot"><span id="llInfo"></span>
+        <span class="ll-more"><button type="button" id="llPrev">▲ Previous</button><button type="button" id="llNext">▼ More</button></span></div>
+    </section>
+    <aside class="ov-card ll-detail" id="llDetail"></aside>
+  </div>
+
   <div class="section-head">
     <div>
       <div class="eyebrow">EPPS · Line List</div>
-      <h2>EPPS Line List</h2>
+      <h2>Line List table</h2>
       <p>All 251 owner-tract rows from the Mapper Export's Line List tab (Sep 30, 2026) — searchable by landowner or tract ID, filterable by tract status</p>
     </div>
   </div>
@@ -1679,8 +1799,6 @@
       </div>
       <div class="lo-count" id="loCount2">3 tracts</div>
       <div class="lo-export-group">
-        <button class="lo-export-btn" id="loExportBtn2" type="button">⬇ Export to Excel</button>
-        <button class="lo-export-btn" id="loExportBtnNotes2" type="button">⬇ Export with Notes</button>
       </div>
     </div>
     <div class="lo-table-wrap">
@@ -4608,6 +4726,237 @@ function ovZoomToTracts(ids){
     } else if(e.key === 'Enter'){ e.preventDefault(); pick(items[Math.max(0, act)]); }
     else if(e.key === 'Escape'){ close(); }
   });
+})();
+
+
+/* =====================================================================
+   LINE LIST · Status explorer (fan) + detail panel
+   Groups the Line List rows by tract status. "By landowner" shows one card per landowner in a
+   status (interest, net acres, status under the name); "By tract" shows one card per tract.
+   ===================================================================== */
+var llState;
+function llInit(){ if(!llState) llState = { mode:'owner', status:'ALL', search:'', start:0, page:12, sel:null }; }
+function llEsc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function llT(st){ return String(st).toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+function llNum(n, d=2){ return (n || 0).toLocaleString('en-US', { minimumFractionDigits:d, maximumFractionDigits:d }); }
+function llInt(v){ return v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:6 }); }
+function llStatuses(){ return LINE_LIST_STATUS_ORDER.filter(st => eppsLineList.some(r => r.trStatus === st)); }
+
+function llEntries(){
+  // one entry per (status, landowner) or (status, tract), sorted A–Z
+  const key = llState.mode === 'owner' ? 'landowner' : 'tractId';
+  const map = new Map();
+  eppsLineList.forEach(r => {
+    const k = r.trStatus + '|' + r[key];
+    if(!map.has(k)) map.set(k, { key:k, status:r.trStatus, label:r[key], rows:[] });
+    map.get(k).rows.push(r);
+  });
+  const out = [...map.values()];
+  out.forEach(e => {
+    e.acres = e.rows.reduce((a,r)=>a+(r.acres||0),0);
+    const ints = [...new Set(e.rows.map(r => r.interest))];
+    e.interest = ints.length === 1 ? ints[0] : null;               // null = differs across tracts
+    e.intSum = e.rows.reduce((a,r)=>a+(r.interest||0),0);
+    e.tracts = new Set(e.rows.map(r => r.tractId)).size;
+    e.owners = new Set(e.rows.map(r => r.landowner)).size;
+  });
+  return out.sort((a,b) => String(a.label).localeCompare(String(b.label)) || a.status.localeCompare(b.status));
+}
+
+function renderLineListExplorer(){
+  llInit();
+  const stage = document.getElementById('llStage'); if(!stage) return;
+  const owner = llState.mode === 'owner';
+  const entries = llEntries();
+  const statuses = llStatuses();
+  document.getElementById('llSub').textContent = `Numbers are ${owner ? 'landowners' : 'tracts'} · click a status to fan out its ${owner ? 'landowners' : 'tracts'} · click a ${owner ? 'name' : 'tract'} for details`;
+
+  // orb
+  document.getElementById('llProjSub').textContent = `${new Set(eppsLineList.map(r=>r.tractId)).size} tracts · ${new Set(eppsLineList.map(r=>r.landowner)).size} owners`;
+  document.getElementById('llProjAc').textContent = `${llNum(eppsLineList.reduce((a,r)=>a+(r.acres||0),0),1)} net ac`;
+  const dots = document.getElementById('llOrbDots');
+  if(!dots.childNodes.length){ let h=''; for(let i=0;i<46;i++){ const a=i/46*Math.PI*2, rr=58+(i%3)*3.2; h+=`<circle cx="${(71+rr*Math.cos(a)).toFixed(1)}" cy="${(71+rr*Math.sin(a)).toFixed(1)}" r="${i%4===0?1.7:1.1}" fill="var(--text-lo)" opacity="${(0.25+((i*37)%10)/16).toFixed(2)}"/>`; } dots.innerHTML=h; }
+
+  // status nodes (All + each)
+  const total = new Set(entries.map(e => e.label)).size;
+  const node = (st, n, lbl, color) => `<button type="button" class="ll-stat${llState.status===st?' active':''}" data-status="${llEsc(st)}" style="--sx-c:${color}"><span class="dot"></span><span class="n">${n}</span><span class="lb">${llEsc(lbl)}</span></button>`;
+  document.getElementById('llStatCol').innerHTML = node('ALL', total, 'All statuses', 'var(--blue)') +
+    statuses.map(st => node(st, entries.filter(e => e.status === st).length, llT(st), statusColor(st))).join('');
+  document.querySelectorAll('#llStatCol .ll-stat').forEach(b => b.addEventListener('click', () => {
+    llState.status = b.getAttribute('data-status'); llState.start = 0; llState.sel = null; renderLineListExplorer();
+  }));
+
+  // list
+  const q = llState.search.trim().toLowerCase();
+  let list = llState.status === 'ALL' ? entries : entries.filter(e => e.status === llState.status);
+  if(q) list = list.filter(e => e.rows.some(r => r.landowner.toLowerCase().includes(q) || String(r.tractId).toLowerCase().includes(q)));
+  const totalN = list.length, page = llState.page;
+  llState.start = Math.max(0, Math.min(llState.start, Math.max(0, totalN - page)));
+  const win = list.slice(llState.start, llState.start + page), n = win.length;
+  const moreBelow = llState.start + page < totalN;
+  document.getElementById('llNameCol').innerHTML = n ? win.map((e,i) => {
+    const t = n > 1 ? i/(n-1) : .5, dx = Math.round(Math.sin(Math.PI*t) * 66);
+    const sel = llState.sel === e.key, fade = moreBelow && i >= n-2 && !sel;
+    const chips = owner
+      ? `<span class="ll-chip">Int ${e.interest != null ? llInt(e.interest) : 'varies'}</span><span class="ll-chip">${llNum(e.acres)} ac</span><span class="ll-chip st" style="--sx-c:${statusColor(e.status)}">${llEsc(e.status)}</span>`
+      : `<span class="ll-chip">${e.owners} owner${e.owners===1?'':'s'}</span><span class="ll-chip">${llNum(e.acres)} ac</span><span class="ll-chip st" style="--sx-c:${statusColor(e.status)}">${llEsc(e.status)}</span>`;
+    return `<div class="ll-cardn${sel?' sel':''}${fade?' fade':''}" role="button" tabindex="0" data-key="${llEsc(e.key)}" data-status="${llEsc(e.status)}"
+        style="--sx-c:${statusColor(e.status)}; --dx:${dx}px; --d:${i*20}ms" title="${llEsc(e.label)}">
+      <div class="nm">${llEsc(e.label)}${owner && e.tracts > 1 ? ` <span style="font-weight:500;color:var(--text-lo)">· ${e.tracts} tracts</span>` : ''}</div>
+      <div class="meta">${chips}</div></div>`;
+  }).join('') : `<div class="ll-empty">Nothing matches “${llEsc(llState.search)}”.</div>`;
+  const what = owner ? 'landowners' : 'tracts';
+  document.getElementById('llInfo').textContent = totalN ? `Showing ${llState.start+1}–${llState.start+n} of ${totalN} ${llState.status==='ALL' ? what : llT(llState.status)+' '+what}, A–Z${totalN > page ? ' · scroll over the names to see more' : ''}` : '';
+  const prev = document.getElementById('llPrev'), next = document.getElementById('llNext');
+  prev.disabled = llState.start === 0; next.disabled = !moreBelow;
+  next.textContent = moreBelow ? `▼ ${totalN - llState.start - n} more` : '▼ More';
+  prev.style.display = next.style.display = totalN > page ? '' : 'none';
+  document.querySelectorAll('#llNameCol .ll-cardn').forEach(c => {
+    const go = () => { const k = c.getAttribute('data-key'); llState.sel = llState.sel === k ? null : k; renderLineListExplorer(); };
+    c.addEventListener('click', go);
+    c.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } });
+  });
+
+  llRenderDetail(entries, statuses);
+  requestAnimationFrame(llDrawLinks);
+}
+
+function llRenderDetail(entries, statuses){
+  const box = document.getElementById('llDetail');
+  const e = entries.find(x => x.key === llState.sel);
+  const ic = (p) => `<i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg></i>`;
+  if(!e){
+    // status summary
+    const st = llState.status;
+    const rows = st === 'ALL' ? eppsLineList : eppsLineList.filter(r => r.trStatus === st);
+    box.innerHTML = `
+      <div class="ll-kind">${ic('<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>')}Status</div>
+      <div class="ll-dname">${st === 'ALL' ? 'All statuses' : llEsc(llT(st))}</div>
+      <div class="ll-tiles">
+        <div class="ll-tile"><b>${new Set(rows.map(r=>r.landowner)).size}</b><span>Landowners</span></div>
+        <div class="ll-tile"><b>${new Set(rows.map(r=>r.tractId)).size}</b><span>Tracts</span></div>
+        <div class="ll-tile"><b>${llNum(rows.reduce((a,r)=>a+(r.acres||0),0),1)}</b><span>Net acres</span></div>
+        <div class="ll-tile"><b>${llNum(rows.reduce((a,r)=>a+(r.gross||0),0),1)}</b><span>Gross acres</span></div>
+      </div>
+      <div class="ll-sec">By status</div>
+      <div class="ll-rows">${statuses.map(s2 => { const rs = eppsLineList.filter(r => r.trStatus === s2);
+        return `<button type="button" class="ll-r" data-status="${llEsc(s2)}" style="--sx-c:${statusColor(s2)}"><span class="dot"></span><span class="nm">${llEsc(llT(s2))}<small>${new Set(rs.map(r=>r.landowner)).size} landowners · ${new Set(rs.map(r=>r.tractId)).size} tracts</small></span><span class="v">${llNum(rs.reduce((a,r)=>a+(r.acres||0),0),1)} ac</span></button>`; }).join('')}</div>
+      <div style="font-size:11.5px;color:var(--text-lo);">Pick a ${llState.mode === 'owner' ? 'landowner' : 'tract'} on the left to see its details here.</div>`;
+    box.querySelectorAll('.ll-r[data-status]').forEach(b => b.addEventListener('click', () => { llState.status = b.getAttribute('data-status'); llState.start = 0; renderLineListExplorer(); }));
+    return;
+  }
+  const back = `<button type="button" class="ll-back" id="llBack">← ${llState.status === 'ALL' ? 'All statuses' : llEsc(llT(llState.status))}</button>`;
+  if(llState.mode === 'owner'){
+    const all = eppsLineList.filter(r => r.landowner === e.label);            // every tract for this owner, any status
+    const sts = [...new Set(all.map(r => r.trStatus))];
+    const ints = [...new Set(all.map(r => r.interest))];
+    const iol = (typeof iolTracking !== 'undefined') ? iolTracking.find(r => r.landowner === e.label) : null;
+    box.innerHTML = `${back}
+      <div class="ll-kind">${ic('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/>')}Landowner</div>
+      <div class="ll-dname">${llEsc(e.label)}</div>
+      <div class="ll-dline">${sts.map(s2 => `<span class="ll-chip st" style="--sx-c:${statusColor(s2)}">${llEsc(s2)}</span>`).join('')}<span>${llEsc(llT(all[0].assigned || ''))}</span></div>
+      <div class="ll-tiles">
+        <div class="ll-tile"><b>${new Set(all.map(r=>r.tractId)).size}</b><span>Tracts</span></div>
+        <div class="ll-tile"><b>${llNum(all.reduce((a,r)=>a+(r.acres||0),0))}</b><span>Net acres</span></div>
+        <div class="ll-tile"><b>${ints.length === 1 ? llInt(ints[0]) : 'Varies'}</b><span>Interest</span></div>
+        <div class="ll-tile"><b>${llNum(all.reduce((a,r)=>a+(r.gross||0),0))}</b><span>Gross acres</span></div>
+      </div>
+      <div class="ll-sec">Tracts</div>
+      <div class="ll-rows">${all.map(r => `<button type="button" class="ll-r" data-tract="${llEsc(r.tractId)}" style="--sx-c:${statusColor(r.trStatus)}" title="Show on map">
+          <span class="dot"></span><span class="nm">${llEsc(r.tractId)}<small>${llEsc(llT(r.trStatus))} · interest ${llInt(r.interest)}</small></span><span class="v">${llNum(r.acres)} ac</span></button>`).join('')}</div>
+      ${iol ? `<div class="ll-sec">Contact</div><div class="ll-contact">${llEsc(iol.address)}<br>${llEsc(iol.city)}, ${llEsc(iol.state)} ${llEsc(iol.zip)}
+          ${iol.mailedDate ? `<small>Mailed: ${llEsc(typeof iolFormatMailedDate === 'function' ? iolFormatMailedDate(iol.mailedDate) : iol.mailedDate)}${iol.deliveryUrl ? ` · <a href="${llEsc(iol.deliveryUrl)}" target="_blank" rel="noopener">tracking</a>` : ''}</small>` : ''}</div>` : ''}
+      <div class="ll-btns"><button type="button" class="ll-btn" id="llMapBtn">Show on map</button><button type="button" class="ll-btn ghost" id="llDetBtn">Last note</button></div>`;
+    document.getElementById('llMapBtn').addEventListener('click', () => llShowOnMap(all[0].tractId));
+    document.getElementById('llDetBtn').addEventListener('click', () => openLandownerModal(e.label, all[0].tractId));
+  } else {
+    const all = eppsLineList.filter(r => r.tractId === e.label);               // every owner on this tract
+    box.innerHTML = `${back}
+      <div class="ll-kind">${ic('<path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/>')}Tract</div>
+      <div class="ll-dname" style="font-family:'JetBrains Mono',monospace;font-size:17px;">${llEsc(e.label)}</div>
+      <div class="ll-dline">${[...new Set(all.map(r=>r.trStatus))].map(s2 => `<span class="ll-chip st" style="--sx-c:${statusColor(s2)}">${llEsc(s2)}</span>`).join('')}<span>${llEsc(llT(all[0].county || ''))}</span></div>
+      <div class="ll-tiles">
+        <div class="ll-tile"><b>${new Set(all.map(r=>r.landowner)).size}</b><span>Owners</span></div>
+        <div class="ll-tile"><b>${llNum(all.reduce((a,r)=>a+(r.acres||0),0))}</b><span>Net acres</span></div>
+        <div class="ll-tile"><b>${llNum(Math.max(...all.map(r=>r.gross||0)))}</b><span>Gross acres</span></div>
+        <div class="ll-tile"><b>${llInt(all.reduce((a,r)=>a+(r.interest||0),0))}</b><span>Interest listed</span></div>
+      </div>
+      <div class="ll-sec">Owners</div>
+      <div class="ll-rows">${all.map(r => `<button type="button" class="ll-r" data-owner="${llEsc(r.landowner)}" style="--sx-c:${statusColor(r.loStatus || r.trStatus)}" title="Open landowner">
+          <span class="dot"></span><span class="nm">${llEsc(r.landowner)}<small>${llEsc(llT(r.loStatus || r.trStatus))} · interest ${llInt(r.interest)}</small></span><span class="v">${llNum(r.acres)} ac</span></button>`).join('')}</div>
+      <div class="ll-btns"><button type="button" class="ll-btn" id="llMapBtn">Show on map</button></div>`;
+    document.getElementById('llMapBtn').addEventListener('click', () => llShowOnMap(e.label));
+  }
+  document.getElementById('llBack').addEventListener('click', () => { llState.sel = null; renderLineListExplorer(); });
+  box.querySelectorAll('.ll-r[data-tract]').forEach(b => b.addEventListener('click', () => llShowOnMap(b.getAttribute('data-tract'))));
+  box.querySelectorAll('.ll-r[data-owner]').forEach(b => b.addEventListener('click', () => {
+    const name = b.getAttribute('data-owner'), r = eppsLineList.find(x => x.landowner === name);
+    llState.mode = 'owner'; llSyncMode(); llState.sel = r.trStatus + '|' + name;
+    if(llState.status !== 'ALL' && llState.status !== r.trStatus) llState.status = 'ALL';
+    llState.start = 0; renderLineListExplorer();
+  }));
+}
+
+function llShowOnMap(tid){
+  if(!tid) return;
+  const ov = document.getElementById('tab-radio-overview');
+  if(ov && !ov.checked){ ov.checked = true; ov.dispatchEvent(new Event('change')); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => {
+    if(leafletMap) leafletMap.invalidateSize();
+    if(!leafletMap || !leafletParcelLayer){ if(typeof setLeafletStatus === 'function') setLeafletStatus('The map is still loading — try again in a moment.'); return; }
+    selectTractOnMap(tid, { zoom: true });
+  }, 150);
+}
+
+function llDrawLinks(){
+  const stage = document.getElementById('llStage'), svg = document.getElementById('llSvg');
+  if(!stage || !svg || !stage.offsetParent) return;
+  const sb = stage.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${sb.width} ${sb.height}`);
+  const rel = r => ({ l:r.left-sb.left, r:r.right-sb.left, cy:(r.top+r.bottom)/2-sb.top });
+  const curve = (x1,y1,x2,y2) => { const mx = x1 + (x2-x1)*.5; return `M${x1.toFixed(1)},${y1.toFixed(1)} C${mx.toFixed(1)},${y1.toFixed(1)} ${mx.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`; };
+  let h = '';
+  const nodes = {}; stage.querySelectorAll('.ll-stat').forEach(el => nodes[el.getAttribute('data-status')] = rel(el.getBoundingClientRect()));
+  const orb = document.getElementById('llOrb');
+  if(orb && orb.offsetParent){
+    const o = rel(orb.getBoundingClientRect()), ox = (o.l+o.r)/2 + 30;
+    Object.entries(nodes).forEach(([st,p]) => { const on = llState.status === st;
+      h += `<path d="${curve(ox,o.cy,p.l,p.cy)}" style="stroke:${on ? (st==='ALL'?'var(--blue)':statusColor(st)) : 'var(--border)'}; stroke-width:${on?2:1.1}"/>`; });
+  }
+  const from = nodes[llState.status];
+  stage.querySelectorAll('.ll-cardn').forEach(c => {
+    const st = c.getAttribute('data-status'), p = from || nodes[st]; if(!p) return;
+    const r = rel(c.getBoundingClientRect()), x2 = r.l - 7, col = statusColor(st);
+    const sel = c.classList.contains('sel'), fade = c.classList.contains('fade');
+    h += `<path d="${curve(p.r,p.cy,x2,r.cy)}" style="stroke:${col}; stroke-width:${sel?2.2:1.2}; opacity:${fade&&!sel?.3:.75}"/>`;
+    h += `<circle cx="${x2}" cy="${r.cy}" r="${sel?4.5:3.6}" style="fill:${col}; stroke:var(--panel-elev); stroke-width:1.5; opacity:${fade&&!sel?.45:1}"/>`;
+  });
+  svg.innerHTML = h;
+}
+function llSyncMode(){ document.querySelectorAll('#llMode button').forEach(x => x.setAttribute('aria-pressed', x.getAttribute('data-m') === llState.mode)); }
+
+(function wireLineListExplorer(){
+  llInit();
+  if(!document.getElementById('llStage')) return;
+  document.querySelectorAll('#llMode button').forEach(b => b.addEventListener('click', () => {
+    llState.mode = b.getAttribute('data-m'); llState.sel = null; llState.start = 0; llSyncMode(); renderLineListExplorer();
+  }));
+  document.getElementById('llFind').addEventListener('input', e => { llState.search = e.target.value; llState.start = 0; renderLineListExplorer(); });
+  document.getElementById('llOrb').addEventListener('click', () => { llState.status = 'ALL'; llState.sel = null; llState.start = 0; renderLineListExplorer(); });
+  const step = d => { llState.start = Math.max(0, llState.start + d); renderLineListExplorer(); };
+  document.getElementById('llPrev').addEventListener('click', () => step(-llState.page));
+  document.getElementById('llNext').addEventListener('click', () => step(llState.page));
+  const col = document.getElementById('llNameCol'); let acc = 0;
+  col.addEventListener('wheel', e => {
+    const next = document.getElementById('llNext'), prev = document.getElementById('llPrev');
+    if((e.deltaY < 0 && prev.disabled) || (e.deltaY > 0 && next.disabled)) return;
+    e.preventDefault(); acc += e.deltaY; const k = Math.trunc(acc/60); if(k){ acc -= k*60; step(k); }
+  }, { passive:false });
+  window.addEventListener('resize', () => requestAnimationFrame(llDrawLinks));
+  document.querySelectorAll('.tab-radio').forEach(r => r.addEventListener('change', () => { if(r.id === 'tab-radio-tracts') requestAnimationFrame(llDrawLinks); }));
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(llDrawLinks));
+  renderLineListExplorer();
 })();
 
 initLeafletMap();
