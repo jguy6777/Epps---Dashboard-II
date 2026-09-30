@@ -807,10 +807,6 @@
 
   /* Street View block in the landowner popup */
   .sv-box{ border:1px solid var(--border-soft); border-radius:8px; overflow:hidden; background: var(--faint); }
-  .sv-img-wrap{ position:relative; aspect-ratio: 2 / 1; background: var(--track); }
-  .sv-img-wrap img{ display:block; width:100%; height:100%; object-fit:cover; }
-  .sv-date{ position:absolute; left:8px; bottom:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:#fff;
-    background: rgba(0,0,0,.55); padding:2px 6px; border-radius:4px; }
   .sv-msg{ font-size:12.5px; color: var(--text-lo); padding:12px 14px 4px; line-height:1.45; }
   .sv-links{ display:flex; gap:8px; flex-wrap:wrap; padding:10px 12px 12px; }
   .sv-btn{ display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-size:12px; font-weight:500;
@@ -1561,7 +1557,7 @@
           <span class="lo-modal-label">Net Miles</span>
           <span id="loModalMiles"></span>
         </div>
-        <div class="lo-modal-section-head">Street View · nearest road to the tract</div>
+        <div class="lo-modal-section-head">Street View · tract location</div>
         <div class="sv-box" id="loModalSV"></div>
         <div class="lo-modal-section-head">Last Note</div>
         <div class="lo-modal-note" id="loModalNote"></div>
@@ -3360,11 +3356,9 @@ function openLandownerModal(name, tractId){
   loadTractStreetView(tract ? tract.id : tractId);
 }
 
-/* ---------------- Street View for the tract in the landowner popup ----------------
-   1. Finds the tract's centre from the ArcGIS parcel layer (cached per tract).
-   2. Always offers "Open in Street View" / "Google Maps" links at that spot (free, no key).
-   3. If the site's /api/streetview function has a Google key, it looks up the nearest road
-      panorama (within ~400 m) and shows a photo aimed from the road toward the tract. */
+/* ---------------- Street View links for the tract in the landowner popup ----------------
+   Finds the tract's centre from the ArcGIS parcel layer (cached per tract) and offers
+   "Open in Street View" / "Google Maps" links at that spot (free — no API key needed). */
 const svCenterCache = {};
 let svToken = 0;
 function svTractCenter(tractId){
@@ -3381,11 +3375,6 @@ function svTractCenter(tractId){
     });
   });
 }
-function svBearing(from, to){
-  const r = Math.PI/180, y = Math.sin((to.lng-from.lng)*r)*Math.cos(to.lat*r);
-  const x = Math.cos(from.lat*r)*Math.sin(to.lat*r) - Math.sin(from.lat*r)*Math.cos(to.lat*r)*Math.cos((to.lng-from.lng)*r);
-  return (Math.atan2(y, x)/r + 360) % 360;
-}
 async function loadTractStreetView(tractId){
   const box = document.getElementById('loModalSV');
   if(!box) return;
@@ -3400,31 +3389,11 @@ async function loadTractStreetView(tractId){
   }
   const ll = `${c.lat.toFixed(6)},${c.lng.toFixed(6)}`;
   const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>';
-  const links = (pano) => `<div class="sv-links">
-      <a class="sv-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${pano ? `${pano.lat},${pano.lng}&heading=${svBearing(pano, c).toFixed(0)}` : ll}">${icon}Open in Street View</a>
+  const links = () => `<div class="sv-links">
+      <a class="sv-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}">${icon}Open in Street View</a>
       <a class="sv-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${ll}">${icon}Google Maps</a>
     </div>`;
   box.innerHTML = links(null);
-
-  // Photo (only when the Vercel function has a Google key; silently skipped otherwise)
-  if(location.protocol === 'file:') return;
-  try{
-    const r = await fetch(`/api/streetview?meta=1&lat=${c.lat}&lng=${c.lng}`);
-    if(my !== svToken) return;
-    if(!r.ok) return;                         // 501 = no key configured yet
-    const m = await r.json();
-    if(my !== svToken) return;
-    if(m.status !== 'OK'){
-      box.innerHTML = `<div class="sv-msg">No Street View imagery within about a quarter mile of this tract.</div>` + links(null);
-      return;
-    }
-    const pano = { lat: m.lat, lng: m.lng };
-    const heading = svBearing(pano, c);
-    const src = `/api/streetview?lat=${pano.lat}&lng=${pano.lng}&heading=${heading.toFixed(1)}`;
-    box.innerHTML = `<div class="sv-img-wrap"><img alt="Street View facing tract ${escHtml(tractId)}" src="${src}">${m.date ? `<span class="sv-date">Imagery ${escHtml(m.date)}</span>` : ''}</div>` + links(pano);
-    const img = box.querySelector('img');
-    img.addEventListener('error', () => { const w = box.querySelector('.sv-img-wrap'); if(w) w.remove(); });
-  }catch(e){ /* keep the links */ }
 }
 function closeLandownerModal(){
   document.getElementById('loModalBackdrop').classList.remove('open');
