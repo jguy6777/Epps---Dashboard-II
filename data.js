@@ -81,13 +81,13 @@ const droppedLandowners = [
 /* ---------------- Money tables: Brokerage & Bonus Payments (carried forward — no new figures this week) ---------------- */
 
 const brokerage = [
-  { name:'ETP - Epps Title', prev:58225.67, curr:575.07, total:58800.74, budget:62000, color:'#4c8dff' },
-  { name:'ETP - Epps GIS', prev:45452.7, curr:280, total:45732.7, budget:50000, color:'#7fb3ff' },
-  { name:'ETP - Epps Leasing', prev:91718.8, curr:2942.5, total:94661.3, budget:455000, color:'#2f5c9e' },
+  { name:'ETP - Epps Title', prev:58225.67, curr:575.07, total:58800.74, budget:62000, color:'var(--series-1)' },
+  { name:'ETP - Epps GIS', prev:45452.7, curr:280, total:45732.7, budget:50000, color:'var(--series-2)' },
+  { name:'ETP - Epps Leasing', prev:91718.8, curr:2942.5, total:94661.3, budget:455000, color:'var(--series-3)' },
 ];
 const bonus = [
-  { name:'ETP - Epps Acreage', prev:601581.82, curr:88.89, total:601670.71, color:'#4c8dff' },
-  { name:'ETP - Epps Infrastructure', prev:96163.15, curr:0, total:96163.15, color:'#7fb3ff' },
+  { name:'ETP - Epps Acreage', prev:601581.82, curr:88.89, total:601670.71, color:'var(--series-1)' },
+  { name:'ETP - Epps Infrastructure', prev:96163.15, curr:0, total:96163.15, color:'var(--series-2)' },
 ];
 
 /* ---------------- Landowner Detail (tracts, broker, most recent note) ----------------
