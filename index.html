@@ -805,14 +805,6 @@
     letter-spacing:.05em;
   }
 
-  /* Street View block in the landowner popup */
-  .sv-box{ border:1px solid var(--border-soft); border-radius:8px; overflow:hidden; background: var(--faint); }
-  .sv-msg{ font-size:12.5px; color: var(--text-lo); padding:12px 14px 4px; line-height:1.45; }
-  .sv-links{ display:flex; gap:8px; flex-wrap:wrap; padding:10px 12px 12px; }
-  .sv-btn{ display:inline-flex; align-items:center; gap:6px; text-decoration:none; font-size:12px; font-weight:500;
-    color: var(--text-mid); background: var(--panel-elev); border:1px solid var(--border-soft); border-radius:7px; padding:6px 11px; }
-  .sv-btn:hover{ color: var(--text-hi); border-color: var(--blue-soft); }
-  .sv-btn svg{ width:13px; height:13px; }
   .bullet-legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:11.5px; color:var(--text-mid); margin-bottom:16px; }
   .bullet-legend .dot{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; vertical-align:middle; }
   .bullet-legend .tick-sample{ display:inline-block; width:2px; height:10px; background:var(--target); margin-right:6px; vertical-align:middle; }
@@ -1557,8 +1549,6 @@
           <span class="lo-modal-label">Net Miles</span>
           <span id="loModalMiles"></span>
         </div>
-        <div class="lo-modal-section-head">Street View · tract location</div>
-        <div class="sv-box" id="loModalSV"></div>
         <div class="lo-modal-section-head">Last Note</div>
         <div class="lo-modal-note" id="loModalNote"></div>
       </div>
@@ -3353,47 +3343,6 @@ function openLandownerModal(name, tractId){
     : `<span style="color:var(--text-lo);">No notes on file for this landowner in the current export.</span>`;
 
   document.getElementById('loModalBackdrop').classList.add('open');
-  loadTractStreetView(tract ? tract.id : tractId);
-}
-
-/* ---------------- Street View links for the tract in the landowner popup ----------------
-   Finds the tract's centre from the ArcGIS parcel layer (cached per tract) and offers
-   "Open in Street View" / "Google Maps" links at that spot (free — no API key needed). */
-const svCenterCache = {};
-let svToken = 0;
-function svTractCenter(tractId){
-  if(svCenterCache[tractId]) return Promise.resolve(svCenterCache[tractId]);
-  return new Promise((resolve) => {
-    if(!leafletParcelLayer || typeof L === 'undefined') return resolve(null);
-    const safeId = String(tractId).replace(/'/g, "''");
-    leafletParcelLayer.query().where(`${ARCGIS_TRACT_FIELD} = '${safeId}'`).run((err, fc) => {
-      if(err || !fc || !fc.features || !fc.features.length) return resolve(null);
-      const b = L.geoJSON(fc).getBounds();
-      if(!b.isValid()) return resolve(null);
-      const c = b.getCenter();
-      resolve(svCenterCache[tractId] = { lat: c.lat, lng: c.lng });
-    });
-  });
-}
-async function loadTractStreetView(tractId){
-  const box = document.getElementById('loModalSV');
-  if(!box) return;
-  const my = ++svToken;
-  if(!tractId || tractId === '—'){ box.innerHTML = `<div class="sv-msg" style="padding-bottom:12px;">No tract selected.</div>`; return; }
-  box.innerHTML = `<div class="sv-msg" style="padding-bottom:12px;">Finding tract ${escHtml(tractId)}…</div>`;
-  const c = await svTractCenter(tractId);
-  if(my !== svToken) return;
-  if(!c){
-    box.innerHTML = `<div class="sv-msg" style="padding-bottom:12px;">The tract location isn't available — the map layer hasn't loaded, or this tract isn't on it.</div>`;
-    return;
-  }
-  const ll = `${c.lat.toFixed(6)},${c.lng.toFixed(6)}`;
-  const icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>';
-  const links = () => `<div class="sv-links">
-      <a class="sv-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${ll}">${icon}Open in Street View</a>
-      <a class="sv-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${ll}">${icon}Google Maps</a>
-    </div>`;
-  box.innerHTML = links(null);
 }
 function closeLandownerModal(){
   document.getElementById('loModalBackdrop').classList.remove('open');
