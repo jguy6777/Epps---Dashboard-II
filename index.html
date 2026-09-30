@@ -975,6 +975,12 @@
     transition: all .15s ease;
   }
   .lo-modal-close:hover{ color: var(--text-hi); border-color: var(--blue-soft); }
+  .lo-modal-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .lo-modal-map{ display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:8px; cursor:pointer;
+    font:600 12px 'Inter',sans-serif; color: var(--on-soft); background: var(--blue-soft); border:1px solid var(--blue); transition: all .15s ease; }
+  .lo-modal-map:hover{ box-shadow: 0 0 0 3px var(--blue-glow); }
+  .lo-modal-map svg{ width:14px; height:14px; }
+  .lo-modal-map[hidden]{ display:none; }
   .lo-modal-body{ padding: 18px 22px 22px; }
   .lo-modal-row{
     display:flex;
@@ -1791,7 +1797,12 @@
           <div class="eyebrow">EPPS · Tract Detail</div>
           <h2 id="loModalName">&nbsp;</h2>
         </div>
-        <button class="lo-modal-close" id="loModalClose" type="button" aria-label="Close">&times;</button>
+        <div class="lo-modal-actions">
+          <button class="lo-modal-map" id="loModalMap" type="button" title="Show this tract on the map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+            Show on map</button>
+          <button class="lo-modal-close" id="loModalClose" type="button" aria-label="Close">&times;</button>
+        </div>
       </div>
       <div class="lo-modal-body">
         <div class="lo-modal-row">
@@ -3616,8 +3627,33 @@ function openLandownerModal(name, tractId){
     ? `<span class="lo-modal-note-date">${note.date}</span>${note.text.replace(/</g,'&lt;')}`
     : `<span style="color:var(--text-lo);">No notes on file for this landowner in the current export.</span>`;
 
+  const mapBtn = document.getElementById('loModalMap');
+  const tid = tract ? tract.id : tractId;
+  mapBtn.hidden = !tid || tid === '—';
+  mapBtn.dataset.tract = tid || '';
+  mapBtn.dataset.owner = name;
+
   document.getElementById('loModalBackdrop').classList.add('open');
 }
+/* "Show on map": close the popup, go to the Overview (where the map lives) and select the tract */
+document.getElementById('loModalMap').addEventListener('click', () => {
+  const b = document.getElementById('loModalMap');
+  const tid = b.dataset.tract, owner = b.dataset.owner;
+  if(!tid) return;
+  closeLandownerModal();
+  const ov = document.getElementById('tab-radio-overview');
+  const wasOverview = ov && ov.checked;
+  if(ov && !ov.checked){ ov.checked = true; ov.dispatchEvent(new Event('change')); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  setTimeout(() => {
+    if(leafletMap) leafletMap.invalidateSize();
+    if(!leafletMap || !leafletParcelLayer){
+      if(typeof setLeafletStatus === 'function') setLeafletStatus('The map is still loading — try again in a moment.');
+      return;
+    }
+    selectTractOnMap(tid, { zoom: true });
+  }, wasOverview ? 0 : 150);
+});
 function closeLandownerModal(){
   document.getElementById('loModalBackdrop').classList.remove('open');
 }
