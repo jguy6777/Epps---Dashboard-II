@@ -1996,7 +1996,6 @@
     <div>
       <div class="eyebrow">NOTES · THEMATIC ANALYSIS</div>
       <h2>Notes Analysis</h2>
-      <p id="naIntro">Agent notes coded against the notes codebook, counted by distinct landowner.</p>
     </div>
   </div>
   <div class="ov-filters">
@@ -5341,8 +5340,6 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   stSel.innerHTML = '<option value="ALL">All statuses</option>' + statuses.map(s=>`<option value="${s}">${title(s)}</option>`).join('');
   const agents = [...new Set(NA.owners.flatMap(o=>o.a))].sort();
   agSel.innerHTML = '<option value="ALL">All agents</option>' + agents.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
-  document.getElementById('naIntro').textContent =
-    `${NA.noteRows} agent notes from ${NA.source} (latest note per tract and owner, as of ${fmtD(NA.asOf)}), coded against the notes codebook and counted by distinct landowner. One note can carry several themes.`;
 
   function filtered(){
     return NA.owners.map((o,i)=>({...o,i})).filter(o =>
