@@ -4700,7 +4700,19 @@ initLeafletMap();
 
 /* ===== END NOTES ANALYSIS DATA ===== */
 (function(){
-  const NA = NOTES_ANALYSIS;
+  /* Acquired landowners get their own "Acquired" theme: their notes are pulled out of every
+     review theme (counsel, price, our move …) so those lists only show owners still in play.
+     Done here from each owner's status, so it applies automatically every weekly run. */
+  const NA = (function(src){
+    const d = JSON.parse(JSON.stringify(src));
+    const acq = new Set(d.owners.map((o,i)=>o.s==='ACQUIRED'?i:-1).filter(i=>i>=0));
+    if(!acq.size) return d;
+    d.themes = d.themes.filter(t=>t.k!=='acquired').concat([{ k:'acquired', g:'A', n:'Acquired',
+      def:'Landowners whose permission is already acquired. Their notes are kept here instead of the review themes above.' }]);
+    d.owners.forEach((o,i)=>{ if(acq.has(i)){ o.k0 = o.k; o.k = ['acquired']; } });
+    d.notes.forEach(n=>{ if(n.o.some(i=>acq.has(i)) && !n.k.includes('acquired')) n.k = n.k.concat(['acquired']); });
+    return d;
+  })(NOTES_ANALYSIS);
   const ST = ['MAILED','DELIVERED','NEGOTIATING','ACQUIRED','STATE LANDS'];
   const TN = Object.fromEntries(NA.themes.map(t=>[t.k,t]));
   const asOf = new Date(NA.asOf+'T00:00:00');
@@ -4737,7 +4749,8 @@ initLeafletMap();
     const counts = NA.themes.map(t=>{ const m=ST.map(s=>os.filter(o=>o.s===s && o.k.includes(t.k)).length); return {t, m, n:m.reduce((a,b)=>a+b,0)}; });
     const mx = Math.max(1, ...counts.map(c=>c.n));
     let h='';
-    [['C','Landowner concerns'],['D','Deal dynamics']].forEach(([g,l])=>{
+    [['C','Landowner concerns'],['D','Deal dynamics'],['A','Closed']].forEach(([g,l])=>{
+      if(!counts.some(c=>c.t.g===g)) return;
       h += `<div class="na-group">${l}</div>`;
       counts.filter(c=>c.t.g===g).sort((a,b)=>b.n-a.n).forEach(c=>{
         h += `<div class="na-row${c.t.k===sel?' on':''}" data-k="${c.t.k}" role="button" tabindex="0"><span class="nm">${esc(c.t.n)}</span><div class="na-bar">${c.m.map((v,i)=>v?`<span style="width:${(v/mx*100).toFixed(1)}%;background:${col(ST[i])}" title="${title(ST[i])}: ${v}"></span>`:'').join('')}</div><span class="ct">${c.n}</span></div>`;
@@ -4749,17 +4762,18 @@ initLeafletMap();
 
     const t = TN[sel], c = counts.find(x=>x.t.k===sel);
     const tos = os.filter(o=>o.k.includes(sel)).sort((a,b)=>a.n.localeCompare(b.n));
-    const tnotes = NA.notes.filter(n=>n.t && n.k.includes(sel) && n.o.some(i=>ids.has(i)))
-      .sort((a,b)=> (b.o.filter(i=>ids.has(i)).length - a.o.filter(i=>ids.has(i)).length) || b.d.localeCompare(a.d));
+    const inTheme = i => ids.has(i) && NA.owners[i].k.includes(sel);
+    const tnotes = NA.notes.filter(n=>n.t && n.k.includes(sel) && n.o.some(inTheme))
+      .sort((a,b)=> (b.o.filter(inTheme).length - a.o.filter(inTheme).length) || b.d.localeCompare(a.d));
     const shown = showAll ? tnotes : tnotes.slice(0,8);
-    const hidden = NA.notes.filter(n=>!n.t && n.k.includes(sel) && n.o.some(i=>ids.has(i))).length;
+    const hidden = NA.notes.filter(n=>!n.t && n.k.includes(sel) && n.o.some(inTheme)).length;
     const ownerName = i => NA.owners[i].n;
     document.getElementById('naDetail').innerHTML =
       `<div class="ov-ch"><div><h2>${esc(t.n)}</h2><div class="na-def">${esc(t.def)}</div></div></div>
        <div class="na-chips">${c.m.map((v,i)=>v?`<span class="lo-status-chip" style="background:${col(ST[i])}">${ST[i]} · ${v}</span>`:'').join('') || '<span class="na-empty">No landowners match the current filters.</span>'}</div>
        ${tos.length ? `<div class="na-sub">Landowners (${tos.length})</div><div class="na-owners">${tos.map(o=>`<button type="button" class="na-owner" data-m="${esc(o.m||'')}" data-t="${esc(o.tr||'')}">${esc(o.n)}${o.c?'<span class="cf">CARROLL</span>':''}</button>`).join('')}</div>` : ''}
        <div class="na-sub">Notes (${tnotes.length})</div>
-       <div class="na-notes">${shown.map(n=>{ const ow=n.o.filter(i=>ids.has(i)); return `<div class="na-note"><div class="meta"><span>${fmtD(n.d)}</span><span>${esc(n.a)}</span><span>${esc(ownerName(ow[0]))}${ow.length>1?` +${ow.length-1} more`:''}</span><span>${title(NA.owners[ow[0]].s)}</span></div>${esc(n.t)}<div class="tags">${n.k.map(x=>`<span class="tag${x===sel?' cur':''}">${esc(TN[x].n)}</span>`).join('')}</div></div>`; }).join('') || '<div class="na-empty">No notes match the current filters.</div>'}</div>
+       <div class="na-notes">${shown.map(n=>{ const ow=n.o.filter(inTheme); return `<div class="na-note"><div class="meta"><span>${fmtD(n.d)}</span><span>${esc(n.a)}</span><span>${esc(ownerName(ow[0]))}${ow.length>1?` +${ow.length-1} more`:''}</span><span>${title(NA.owners[ow[0]].s)}</span></div>${esc(n.t)}<div class="tags">${n.k.map(x=>`<span class="tag${x===sel?' cur':''}">${esc(TN[x].n)}</span>`).join('')}</div></div>`; }).join('') || '<div class="na-empty">No notes match the current filters.</div>'}</div>
        ${tnotes.length>8 ? `<button type="button" class="ov-btn na-more" id="naMore">${showAll?'Show fewer':'Show all '+tnotes.length+' notes'}</button>` : ''}
        ${hidden ? `<div class="na-foot">${hidden} note${hidden>1?'s':''} counted here but not shown for privacy.</div>` : ''}`;
     const more = document.getElementById('naMore'); if(more) more.addEventListener('click',()=>{ showAll=!showAll; render(); });
