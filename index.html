@@ -2141,7 +2141,12 @@
 ;
 
 
-const DATA_STATUS_ORDER = ['ACQUIRED','DELIVERED','LEGAL','MAILED','NEGOTIATING','STATE LANDS'];
+// Status order comes from STATUS_HIERARCHY in data.js (the export's Rob_Join tab), most to least advanced.
+// Retired statuses stay at the end so older weeks in history[] still display.
+const RETIRED_STATUSES = ['LEGAL','STATE LANDS'];
+const STATUS_HIERARCHY_LIST = (typeof STATUS_HIERARCHY !== 'undefined' && STATUS_HIERARCHY.length)
+  ? STATUS_HIERARCHY.slice() : ['ACQUIRED','SURVEY REQUESTED','NEGOTIATING','DELIVERED','MAILED'];
+const DATA_STATUS_ORDER = STATUS_HIERARCHY_LIST.concat(RETIRED_STATUSES.filter(s => !STATUS_HIERARCHY_LIST.includes(s)));
 // currentWeekIdx points into history[] — the "current" week for every comparison on the page.
 // Starts on the latest week recorded. Index 0 (the very first week) can never be selected as
 // "current" since there is nothing before it to compare against.
@@ -2197,6 +2202,7 @@ let leafletZoomedToTract = false; // true when the map moved because a list row 
 
 const STATUS_COLORS = {
   'ACQUIRED':    '#ffff73',
+  'SURVEY REQUESTED': '#ff73df',
   'NEGOTIATING': '#73b2ff',
   'DELIVERED':   '#38a800',
   'MAILED':      '#ffebaf',
@@ -2562,7 +2568,7 @@ function buildTractRows(){
 
 
 const STATUS_COLOR_MAP = {
-  'ACQUIRED':'#ffff73','NEGOTIATING':'#73b2ff','DELIVERED':'#38a800',
+  'ACQUIRED':'#ffff73','SURVEY REQUESTED':'#ff73df','NEGOTIATING':'#73b2ff','DELIVERED':'#38a800',
   'MAILED':'#ffebaf','LEGAL':'#ffaa00','STATE LANDS':'#ff7f7f'
 };
 
@@ -2604,7 +2610,8 @@ function renderAllTractTables(){
    separate from the `selected` variable and pill rows that drive the Acquisition Summary tab,
    since this source's statuses (e.g. PARTIALLY ACQUIRED) don't exist in the mapper export's
    MAIL_STATUS and shouldn't affect the map, gauge, or front-page table. */
-const LINE_LIST_STATUS_ORDER = ['ACQUIRED','PARTIALLY ACQUIRED','NEGOTIATING','DELIVERED','MAILED','LEGAL','STATE LANDS'];
+// Same hierarchy as DATA_STATUS_ORDER, with the tract-level PARTIALLY ACQUIRED placed right after ACQUIRED.
+const LINE_LIST_STATUS_ORDER = DATA_STATUS_ORDER.flatMap(s => s === 'ACQUIRED' ? ['ACQUIRED','PARTIALLY ACQUIRED'] : [s]);
 const LINE_LIST_STATUS_RANK = {};
 LINE_LIST_STATUS_ORDER.forEach((name, i) => { LINE_LIST_STATUS_RANK[name] = i; });
 let lineListSelected = 'ALL';
