@@ -1212,6 +1212,7 @@
   #tab-radio-tracking:checked ~ #tabPanel-tracking{ display:block; }
   /* ---------------- Notes Analysis tab ---------------- */
   #tab-radio-notes:checked ~ #tabPanel-notes{ display:block; }
+  .ov-filters select[hidden]{ display:none; }
   .na-kpis{ display:grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap:14px; margin-bottom:14px; }
   .na-kpi .lbl{ font-size:11.5px; color: var(--text-lo); }
   .na-kpi .num{ font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:600; color: var(--text-hi); margin-top:4px; }
@@ -2001,7 +2002,8 @@
   <div class="ov-filters">
     <select id="naStatus" aria-label="Filter by status"></select>
     <select id="naAgent" aria-label="Filter by agent"></select>
-    <select id="naRep" aria-label="Filter by representation"><option value="all">All owners</option><optgroup label="Represented by counsel"><option value="counsel">All counsel</option><option value="carroll">Carroll</option><option value="other">Other counsel</option></optgroup></select>
+    <div class="ov-seg" id="naRep" role="group" aria-label="Representation"><button type="button" data-v="all" aria-pressed="true">All owners</button><button type="button" data-v="counsel" aria-pressed="false">Represented by counsel</button></div>
+    <select id="naCounsel" aria-label="Filter counsel" hidden><option value="all">All counsel</option><option value="carroll">Carroll</option><option value="other">Other counsel</option></select>
     <button type="button" class="ov-btn" id="naClear">Clear filters</button>
     <span class="ov-fnote" id="naCount"></span>
   </div>
@@ -5333,7 +5335,7 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const col = s => (typeof statusColor==='function') ? statusColor(s) : '#4c8dff';
   const title = s => s.charAt(0)+s.slice(1).toLowerCase();
-  let fStatus='ALL', fAgent='ALL', fRep='all', sel='counsel', showAll=false;
+  let fStatus='ALL', fAgent='ALL', fRep='all', fCounsel='all', sel='counsel', showAll=false;
 
   const stSel = document.getElementById('naStatus'), agSel = document.getElementById('naAgent');
   const statuses = ST.filter(s=>NA.owners.some(o=>o.s===s));
@@ -5344,7 +5346,7 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   function filtered(){
     return NA.owners.map((o,i)=>({...o,i})).filter(o =>
       (fStatus==='ALL' || o.s===fStatus) && (fAgent==='ALL' || o.a.includes(fAgent)) &&
-      (fRep==='all' || (o.k.includes('counsel') && (fRep==='counsel' || (fRep==='carroll' ? o.c : !o.c)))));
+      (fRep==='all' || (o.k.includes('counsel') && (fCounsel==='all' || (fCounsel==='carroll' ? o.c : !o.c)))));
   }
   function render(){
     const os = filtered(), ids = new Set(os.map(o=>o.i));
@@ -5392,10 +5394,15 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   }
   stSel.addEventListener('change',()=>{ fStatus=stSel.value; render(); });
   agSel.addEventListener('change',()=>{ fAgent=agSel.value; render(); });
-  const repSel = document.getElementById('naRep');
-  repSel.addEventListener('change',()=>{ fRep=repSel.value; render(); });
+  const cSel = document.getElementById('naCounsel');
+  const pressRep = v => document.querySelectorAll('#naRep button').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.v===v)));
+  document.querySelectorAll('#naRep button').forEach(b=>b.addEventListener('click',()=>{
+    fRep=b.dataset.v; pressRep(fRep);
+    if(fRep==='all'){ fCounsel='all'; cSel.value='all'; }
+    cSel.hidden = fRep!=='counsel'; render(); }));
+  cSel.addEventListener('change',()=>{ fCounsel=cSel.value; render(); });
   document.getElementById('naClear').addEventListener('click',()=>{
-    fStatus='ALL'; fAgent='ALL'; fRep='all'; stSel.value='ALL'; agSel.value='ALL'; repSel.value='all'; render(); });
+    fStatus='ALL'; fAgent='ALL'; fRep='all'; fCounsel='all'; stSel.value='ALL'; agSel.value='ALL'; cSel.value='all'; cSel.hidden=true; pressRep('all'); render(); });
   render();
 })();
 </script>
