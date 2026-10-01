@@ -2001,7 +2001,7 @@
   <div class="ov-filters">
     <select id="naStatus" aria-label="Filter by status"></select>
     <select id="naAgent" aria-label="Filter by agent"></select>
-    <div class="ov-seg" id="naCarroll" role="group" aria-label="Carroll flag"><button type="button" data-v="all" aria-pressed="true">All owners</button><button type="button" data-v="yes" aria-pressed="false">Carroll</button><button type="button" data-v="no" aria-pressed="false">Non-Carroll</button></div>
+    <select id="naRep" aria-label="Filter by representation"><option value="all">All owners</option><optgroup label="Represented by counsel"><option value="counsel">All counsel</option><option value="carroll">Carroll</option><option value="other">Other counsel</option></optgroup></select>
     <button type="button" class="ov-btn" id="naClear">Clear filters</button>
     <span class="ov-fnote" id="naCount"></span>
   </div>
@@ -5333,7 +5333,7 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   const col = s => (typeof statusColor==='function') ? statusColor(s) : '#4c8dff';
   const title = s => s.charAt(0)+s.slice(1).toLowerCase();
-  let fStatus='ALL', fAgent='ALL', fCarroll='all', sel='counsel', showAll=false;
+  let fStatus='ALL', fAgent='ALL', fRep='all', sel='counsel', showAll=false;
 
   const stSel = document.getElementById('naStatus'), agSel = document.getElementById('naAgent');
   const statuses = ST.filter(s=>NA.owners.some(o=>o.s===s));
@@ -5344,7 +5344,7 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   function filtered(){
     return NA.owners.map((o,i)=>({...o,i})).filter(o =>
       (fStatus==='ALL' || o.s===fStatus) && (fAgent==='ALL' || o.a.includes(fAgent)) &&
-      (fCarroll==='all' || (fCarroll==='yes' ? o.c : !o.c)));
+      (fRep==='all' || (o.k.includes('counsel') && (fRep==='counsel' || (fRep==='carroll' ? o.c : !o.c)))));
   }
   function render(){
     const os = filtered(), ids = new Set(os.map(o=>o.i));
@@ -5392,11 +5392,10 @@ const NOTES_ANALYSIS = {"asOf":"2026-09-30","source":"EPPS - Mapper Export - 09.
   }
   stSel.addEventListener('change',()=>{ fStatus=stSel.value; render(); });
   agSel.addEventListener('change',()=>{ fAgent=agSel.value; render(); });
-  document.querySelectorAll('#naCarroll button').forEach(b=>b.addEventListener('click',()=>{
-    fCarroll=b.dataset.v; document.querySelectorAll('#naCarroll button').forEach(x=>x.setAttribute('aria-pressed', String(x===b))); render(); }));
+  const repSel = document.getElementById('naRep');
+  repSel.addEventListener('change',()=>{ fRep=repSel.value; render(); });
   document.getElementById('naClear').addEventListener('click',()=>{
-    fStatus='ALL'; fAgent='ALL'; fCarroll='all'; stSel.value='ALL'; agSel.value='ALL';
-    document.querySelectorAll('#naCarroll button').forEach(x=>x.setAttribute('aria-pressed', String(x.dataset.v==='all'))); render(); });
+    fStatus='ALL'; fAgent='ALL'; fRep='all'; stSel.value='ALL'; agSel.value='ALL'; repSel.value='all'; render(); });
   render();
 })();
 </script>
