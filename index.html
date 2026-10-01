@@ -914,12 +914,10 @@
   .ll-stat .lb{ font-size:12px; color: var(--text-mid); line-height:1.25; }
   .ll-stat.active{ border-color: var(--sx-c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sx-c) 30%, transparent); }
   .ll-stat.active .lb{ color: var(--text-hi); font-weight:600; }
-  .ll-namecol{ padding-left:70px; display:flex; flex-direction:column; justify-content:center; gap:6px; overscroll-behavior:contain; }
-  .ll-cardn{ all:unset; box-sizing:border-box; cursor:pointer; display:block; width: calc(100% - 76px); max-width:340px;
+  .ll-namecol{ padding-left:70px; position:relative; overflow:hidden; overscroll-behavior:contain; outline:none; }
+  .ll-cardn{ all:unset; box-sizing:border-box; cursor:pointer; display:block; position:absolute; left:70px; width: calc(100% - 146px); max-width:340px;
     padding:6px 10px 7px; border-radius:9px; background: var(--panel-elev); border:1px solid var(--border-soft);
-    transform: translateX(var(--dx,0px)); transition: transform .35s cubic-bezier(.3,.7,.3,1), opacity .3s ease, border-color .15s ease, box-shadow .15s ease;
-    animation: llin .3s ease both; animation-delay: var(--d,0ms); }
-  @keyframes llin{ from{ opacity:0; transform: translateX(calc(var(--dx,0px) - 14px)); } }
+    will-change: transform, opacity, top; transition: border-color .15s ease, box-shadow .15s ease; visibility:hidden; }
   .ll-cardn:hover{ border-color: var(--blue-soft); }
   .ll-cardn.fade{ opacity:.45; }
   .ll-cardn.sel{ border-color: var(--sx-c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sx-c) 28%, transparent); opacity:1; }
@@ -963,9 +961,9 @@
     border:1px solid var(--blue); background: var(--blue-soft); color: var(--on-soft); }
   .ll-btn.ghost{ background: var(--panel-elev); color: var(--text-hi); border-color: var(--border); }
   .ll-btn:hover{ box-shadow: 0 0 0 3px var(--blue-glow); }
-  @media (max-width: 1500px){ .ll-stage{ grid-template-columns: 200px minmax(0,520px); } .ll-orbcol{ display:none; } .ll-namecol{ padding-left:52px; } }
+  @media (max-width: 1500px){ .ll-stage{ grid-template-columns: 200px minmax(0,520px); } .ll-orbcol{ display:none; } .ll-namecol{ padding-left:52px; --arc:.6; } .ll-cardn{ left:52px; width: calc(100% - 110px); } }
   @media (max-width: 1180px){ .ll-wrap{ grid-template-columns: 1fr; } .ll-detail{ max-height:none; } }
-  @media (max-width: 700px){ .ll-stage{ grid-template-columns: 1fr; } .ll-svg{ display:none; } .ll-namecol{ padding-left:0; margin-top:10px; } .ll-cardn{ width:100%; max-width:none; transform:none; } }
+  @media (max-width: 700px){ .ll-stage{ grid-template-columns: 1fr; } .ll-svg{ display:none; } .ll-namecol{ padding-left:0; margin-top:10px; min-height:680px; --arc:0; } .ll-cardn{ left:0; width:100%; max-width:none; } }
   .lo-empty{ text-align:center; color:var(--text-lo); padding:24px; font-size:13px; }
   .lo-note{ font-size:11.5px; color:var(--text-lo); margin-top:12px; line-height:1.5; }
   table.lo-table tbody tr{ cursor:pointer; }
@@ -4737,7 +4735,9 @@ function ovZoomToTracts(ids){
    status (interest, net acres, status under the name); "By tract" shows one card per tract.
    ===================================================================== */
 var llState;
-function llInit(){ if(!llState) llState = { mode:'owner', status:'ALL', search:'', start:0, page:12, sel:null }; }
+function llInit(){ if(!llState) llState = { mode:'owner', status:'ALL', search:'', start:0, page:12, sel:null, pos:0, target:0, list:[], listKey:'', t0:0, prevStatus:null }; }
+const LL_REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const LL_PITCH = 55, LL_ARC = 66;
 function llEsc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function llT(st){ return String(st).toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
 function llNum(n, d=2){ return (n || 0).toLocaleString('en-US', { minimumFractionDigits:d, maximumFractionDigits:d }); }
@@ -4785,42 +4785,48 @@ function renderLineListExplorer(){
   document.getElementById('llStatCol').innerHTML = node('ALL', total, 'All statuses', 'var(--blue)') +
     statuses.map(st => node(st, entries.filter(e => e.status === st).length, llT(st), statusColor(st))).join('');
   document.querySelectorAll('#llStatCol .ll-stat').forEach(b => b.addEventListener('click', () => {
-    llState.status = b.getAttribute('data-status'); llState.start = 0; llState.sel = null; renderLineListExplorer();
+    if(b.getAttribute('data-status') === llState.status) return;
+    llState.status = b.getAttribute('data-status'); llState.sel = null; renderLineListExplorer();
   }));
 
-  // list
+  // list — every card for the current status is built once and then positioned on a wheel;
+  // scrolling only moves them (no rebuild), so it glides instead of jumping a page at a time.
   const q = llState.search.trim().toLowerCase();
   let list = llState.status === 'ALL' ? entries : entries.filter(e => e.status === llState.status);
   if(q) list = list.filter(e => e.rows.some(r => r.landowner.toLowerCase().includes(q) || String(r.tractId).toLowerCase().includes(q)));
-  const totalN = list.length, page = llState.page;
-  llState.start = Math.max(0, Math.min(llState.start, Math.max(0, totalN - page)));
-  const win = list.slice(llState.start, llState.start + page), n = win.length;
-  const moreBelow = llState.start + page < totalN;
-  document.getElementById('llNameCol').innerHTML = n ? win.map((e,i) => {
-    const t = n > 1 ? i/(n-1) : .5, dx = Math.round(Math.sin(Math.PI*t) * 66);
-    const sel = llState.sel === e.key, fade = moreBelow && i >= n-2 && !sel;
-    const chips = owner
-      ? `<span class="ll-chip">Int ${e.interest != null ? llInt(e.interest) : 'varies'}</span><span class="ll-chip">${llNum(e.acres)} ac</span><span class="ll-chip st" style="--sx-c:${statusColor(e.status)}">${llEsc(e.status)}</span>`
-      : `<span class="ll-chip">${e.owners} owner${e.owners===1?'':'s'}</span><span class="ll-chip">${llNum(e.acres)} ac</span><span class="ll-chip st" style="--sx-c:${statusColor(e.status)}">${llEsc(e.status)}</span>`;
-    return `<div class="ll-cardn${sel?' sel':''}${fade?' fade':''}" role="button" tabindex="0" data-key="${llEsc(e.key)}" data-status="${llEsc(e.status)}"
-        style="--sx-c:${statusColor(e.status)}; --dx:${dx}px; --d:${i*20}ms" title="${llEsc(e.label)}">
-      <div class="nm">${llEsc(e.label)}${owner && e.tracts > 1 ? ` <span style="font-weight:500;color:var(--text-lo)">· ${e.tracts} tracts</span>` : ''}</div>
-      <div class="meta">${chips}</div></div>`;
-  }).join('') : `<div class="ll-empty">Nothing matches “${llEsc(llState.search)}”.</div>`;
-  const what = owner ? 'landowners' : 'tracts';
-  document.getElementById('llInfo').textContent = totalN ? `Showing ${llState.start+1}–${llState.start+n} of ${totalN} ${llState.status==='ALL' ? what : llT(llState.status)+' '+what}, A–Z${totalN > page ? ' · scroll over the names to see more' : ''}` : '';
-  const prev = document.getElementById('llPrev'), next = document.getElementById('llNext');
-  prev.disabled = llState.start === 0; next.disabled = !moreBelow;
-  next.textContent = moreBelow ? `▼ ${totalN - llState.start - n} more` : '▼ More';
-  prev.style.display = next.style.display = totalN > page ? '' : 'none';
-  document.querySelectorAll('#llNameCol .ll-cardn').forEach(c => {
-    const go = () => { const k = c.getAttribute('data-key'); llState.sel = llState.sel === k ? null : k; renderLineListExplorer(); };
-    c.addEventListener('click', go);
-    c.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } });
-  });
+  const listKey = `${llState.mode}|${llState.status}|${q}`;
+  const col = document.getElementById('llNameCol');
+  if(listKey !== llState.listKey){
+    llState.listKey = listKey; llState.list = list;
+    llState.pos = llState.target = 0;
+    llState.t0 = performance.now();                       // starts the line-drawing / fan-out transition
+    col.innerHTML = list.length ? list.map((e,i) => {
+      const chips = owner
+        ? `<span class="ll-chip">Int ${e.interest != null ? llInt(e.interest) : 'varies'}</span><span class="ll-chip">${llNum(e.acres)} ac</span><span class="ll-chip st" style="--sx-c:${statusColor(e.status)}">${llEsc(e.status)}</span>`
+        : `<span class="ll-chip">${e.owners} owner${e.owners===1?'':'s'}</span><span class="ll-chip">${llNum(e.acres)} ac</span><span class="ll-chip st" style="--sx-c:${statusColor(e.status)}">${llEsc(e.status)}</span>`;
+      return `<div class="ll-cardn" role="button" tabindex="-1" data-i="${i}" data-key="${llEsc(e.key)}" data-status="${llEsc(e.status)}"
+          style="--sx-c:${statusColor(e.status)}" title="${llEsc(e.label)}">
+        <div class="nm">${llEsc(e.label)}${owner && e.tracts > 1 ? ` <span style="font-weight:500;color:var(--text-lo)">· ${e.tracts} tracts</span>` : ''}</div>
+        <div class="meta">${chips}</div></div>`;
+    }).join('') : `<div class="ll-empty">Nothing matches “${llEsc(llState.search)}”.</div>`;
+    col.querySelectorAll('.ll-cardn').forEach(c => {
+      const go = () => { const k = c.getAttribute('data-key'); llState.sel = llState.sel === k ? null : k; renderLineListExplorer(); };
+      c.addEventListener('click', go);
+      c.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } });
+    });
+    llState.cards = [...col.querySelectorAll('.ll-cardn')];
+  }
+  // keep the selected card in view (e.g. picked from the tract panel)
+  if(llState.sel){
+    const idx = llState.list.findIndex(e => e.key === llState.sel);
+    if(idx >= 0 && (idx < Math.round(llState.target) || idx > Math.round(llState.target) + llState.page - 1))
+      llState.target = Math.max(0, Math.min(idx - Math.floor(llState.page/2), llMaxPos()));
+  }
+  (llState.cards || []).forEach(c => c.classList.toggle('sel', c.getAttribute('data-key') === llState.sel));
+  llUpdateFooter();
+  llKick();
 
   llRenderDetail(entries, statuses);
-  requestAnimationFrame(llDrawLinks);
 }
 
 function llRenderDetail(entries, statuses){
@@ -4844,7 +4850,7 @@ function llRenderDetail(entries, statuses){
       <div class="ll-rows">${statuses.map(s2 => { const rs = eppsLineList.filter(r => r.trStatus === s2);
         return `<button type="button" class="ll-r" data-status="${llEsc(s2)}" style="--sx-c:${statusColor(s2)}"><span class="dot"></span><span class="nm">${llEsc(llT(s2))}<small>${new Set(rs.map(r=>r.landowner)).size} landowners · ${new Set(rs.map(r=>r.tractId)).size} tracts</small></span><span class="v">${llNum(rs.reduce((a,r)=>a+(r.acres||0),0),1)} ac</span></button>`; }).join('')}</div>
       <div style="font-size:11.5px;color:var(--text-lo);">Pick a ${llState.mode === 'owner' ? 'landowner' : 'tract'} on the left to see its details here.</div>`;
-    box.querySelectorAll('.ll-r[data-status]').forEach(b => b.addEventListener('click', () => { llState.status = b.getAttribute('data-status'); llState.start = 0; renderLineListExplorer(); }));
+    box.querySelectorAll('.ll-r[data-status]').forEach(b => b.addEventListener('click', () => { llState.status = b.getAttribute('data-status'); renderLineListExplorer(); }));
     return;
   }
   const back = `<button type="button" class="ll-back" id="llBack">← ${llState.status === 'ALL' ? 'All statuses' : llEsc(llT(llState.status))}</button>`;
@@ -4899,7 +4905,7 @@ function llRenderDetail(entries, statuses){
     const name = b.getAttribute('data-owner'), r = eppsLineList.find(x => x.landowner === name);
     llState.mode = 'owner'; llSyncMode(); llState.sel = r.trStatus + '|' + name;
     if(llState.status !== 'ALL' && llState.status !== r.trStatus) llState.status = 'ALL';
-    llState.start = 0; renderLineListExplorer();
+    renderLineListExplorer();
   }));
 }
 
@@ -4915,28 +4921,94 @@ function llShowOnMap(tid){
   }, 150);
 }
 
-function llDrawLinks(){
-  const stage = document.getElementById('llStage'), svg = document.getElementById('llSvg');
+function llMaxPos(){ return Math.max(0, (llState.list || []).length - llState.page); }
+function llUpdateFooter(){
+  const total = (llState.list || []).length, page = llState.page;
+  const first = Math.min(total, Math.round(llState.target) + 1), last = Math.min(total, Math.round(llState.target) + page);
+  const owner = llState.mode === 'owner', what = owner ? 'landowners' : 'tracts';
+  document.getElementById('llInfo').textContent = total ? `Showing ${first}–${last} of ${total} ${llState.status==='ALL' ? what : llT(llState.status)+' '+what}, A–Z${total > page ? ' · scroll over the names to see more' : ''}` : '';
+  const prev = document.getElementById('llPrev'), next = document.getElementById('llNext');
+  prev.disabled = llState.target <= 0.01; next.disabled = llState.target >= llMaxPos() - 0.01;
+  next.textContent = next.disabled ? '▼ More' : `▼ ${Math.max(0, total - last)} more`;
+  prev.style.display = next.style.display = total > page ? '' : 'none';
+}
+let llRaf = 0;
+function llKick(){ if(!llRaf) llRaf = requestAnimationFrame(llFrame); }
+const llEase = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3);
+
+/* One animation frame: glide pos toward target, lay the cards out on the arc, redraw the lines. */
+function llFrame(now){
+  llRaf = 0;
+  const stage = document.getElementById('llStage'), col = document.getElementById('llNameCol');
+  if(!stage || !stage.offsetParent){ return; }
+  const d = llState.target - llState.pos;
+  llState.pos = (LL_REDUCED || Math.abs(d) < 0.002) ? llState.target : llState.pos + d * 0.2;
+  const page = llState.page, cards = llState.cards || [];
+  const H = col.clientHeight, top0 = Math.max(0, (H - (page * LL_PITCH - 6)) / 2);
+  const arcMul = parseFloat(getComputedStyle(col).getPropertyValue('--arc')) || 1;
+  const since = now - llState.t0;
+  let animating = Math.abs(llState.target - llState.pos) > 0.002;
+  let vis = 0;
+  cards.forEach(c => {
+    const i = +c.getAttribute('data-i'), t = i - llState.pos;
+    if(t < -1.2 || t > page + 0.2){ c.style.visibility = 'hidden'; c._p = null; return; }
+    // fan-out transition after a status change: cards slide out from the status node one after another
+    const k = Math.max(0, Math.round(t));
+    const p = LL_REDUCED ? 1 : llEase((since - k * 32) / 460);
+    if(p < 1) animating = true;
+    const u = Math.min(1, Math.max(0, t / (page - 1)));
+    const dx = Math.sin(Math.PI * u) * LL_ARC * arcMul;
+    const y = top0 + t * LL_PITCH;
+    let o = Math.min(1, Math.max(0, t + 1)) * Math.min(1, Math.max(0, (page - t) / 2.2));
+    if(c.classList.contains('sel')) o = Math.max(o, Math.min(1, Math.max(0, t + 1)));
+    c.style.visibility = 'visible';
+    c.style.top = y.toFixed(1) + 'px';
+    c.style.transform = `translateX(${(dx - (1 - p) * 46).toFixed(1)}px) scale(${(0.96 + 0.04 * p).toFixed(3)})`;
+    c.style.opacity = (o * p).toFixed(3);
+    c.style.pointerEvents = o * p > 0.35 ? '' : 'none';
+    c.tabIndex = (t > -0.5 && t < page - 0.5) ? 0 : -1;
+    c._p = { y, dx, p, o };
+    vis++;
+  });
+  llDrawLinks(now);
+  if(animating) llKick(); else llUpdateFooter();
+}
+
+/* Lines: orb → statuses (active one highlighted, grows in on change) and active status → each visible card
+   (drawn outward from the status node as the cards fan out). Card positions come from the layout math,
+   so the lines track the wheel smoothly. */
+function llDrawLinks(now){
+  const stage = document.getElementById('llStage'), svg = document.getElementById('llSvg'), col = document.getElementById('llNameCol');
   if(!stage || !svg || !stage.offsetParent) return;
+  now = now || performance.now();
   const sb = stage.getBoundingClientRect();
   svg.setAttribute('viewBox', `0 0 ${sb.width} ${sb.height}`);
   const rel = r => ({ l:r.left-sb.left, r:r.right-sb.left, cy:(r.top+r.bottom)/2-sb.top });
   const curve = (x1,y1,x2,y2) => { const mx = x1 + (x2-x1)*.5; return `M${x1.toFixed(1)},${y1.toFixed(1)} C${mx.toFixed(1)},${y1.toFixed(1)} ${mx.toFixed(1)},${y2.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`; };
+  const since = now - llState.t0;
   let h = '';
   const nodes = {}; stage.querySelectorAll('.ll-stat').forEach(el => nodes[el.getAttribute('data-status')] = rel(el.getBoundingClientRect()));
   const orb = document.getElementById('llOrb');
   if(orb && orb.offsetParent){
     const o = rel(orb.getBoundingClientRect()), ox = (o.l+o.r)/2 + 30;
-    Object.entries(nodes).forEach(([st,p]) => { const on = llState.status === st;
-      h += `<path d="${curve(ox,o.cy,p.l,p.cy)}" style="stroke:${on ? (st==='ALL'?'var(--blue)':statusColor(st)) : 'var(--border)'}; stroke-width:${on?2:1.1}"/>`; });
+    const pOrb = LL_REDUCED ? 1 : llEase(since / 380);
+    Object.entries(nodes).forEach(([st,p]) => {
+      const on = llState.status === st, colr = st === 'ALL' ? 'var(--blue)' : statusColor(st);
+      h += `<path d="${curve(ox,o.cy,p.l,p.cy)}" style="stroke:var(--border); stroke-width:1.1"/>`;
+      if(on) h += `<path d="${curve(ox,o.cy,p.l,p.cy)}" pathLength="1" style="stroke:${colr}; stroke-width:2.2; stroke-dasharray:${pOrb.toFixed(3)} 1"/>`;
+    });
   }
   const from = nodes[llState.status];
-  stage.querySelectorAll('.ll-cardn').forEach(c => {
-    const st = c.getAttribute('data-status'), p = from || nodes[st]; if(!p) return;
-    const r = rel(c.getBoundingClientRect()), x2 = r.l - 7, col = statusColor(st);
-    const sel = c.classList.contains('sel'), fade = c.classList.contains('fade');
-    h += `<path d="${curve(p.r,p.cy,x2,r.cy)}" style="stroke:${col}; stroke-width:${sel?2.2:1.2}; opacity:${fade&&!sel?.3:.75}"/>`;
-    h += `<circle cx="${x2}" cy="${r.cy}" r="${sel?4.5:3.6}" style="fill:${col}; stroke:var(--panel-elev); stroke-width:1.5; opacity:${fade&&!sel?.45:1}"/>`;
+  const cb = col.getBoundingClientRect(), padL = parseFloat(getComputedStyle(col).paddingLeft) || 0;
+  const baseX = cb.left - sb.left + padL, baseY = cb.top - sb.top;
+  (llState.cards || []).forEach(c => {
+    if(!c._p || !from) return;
+    const { y, dx, p, o } = c._p;
+    const cy = baseY + y + c.offsetHeight / 2, x2 = baseX + dx - 7 - (1 - p) * 46;
+    const st = c.getAttribute('data-status'), colr = statusColor(st), sel = c.classList.contains('sel');
+    const lp = LL_REDUCED ? 1 : Math.min(1, p * 1.15);
+    h += `<path d="${curve(from.r, from.cy, x2, cy)}" pathLength="1" style="stroke:${colr}; stroke-width:${sel?2.2:1.2}; opacity:${(0.8*o).toFixed(3)}; stroke-dasharray:${lp.toFixed(3)} 1"/>`;
+    if(lp > 0.95) h += `<circle cx="${x2.toFixed(1)}" cy="${cy.toFixed(1)}" r="${sel?4.5:3.6}" style="fill:${colr}; stroke:var(--panel-elev); stroke-width:1.5; opacity:${o.toFixed(3)}"/>`;
   });
   svg.innerHTML = h;
 }
@@ -4946,22 +5018,29 @@ function llSyncMode(){ document.querySelectorAll('#llMode button').forEach(x => 
   llInit();
   if(!document.getElementById('llStage')) return;
   document.querySelectorAll('#llMode button').forEach(b => b.addEventListener('click', () => {
-    llState.mode = b.getAttribute('data-m'); llState.sel = null; llState.start = 0; llSyncMode(); renderLineListExplorer();
+    llState.mode = b.getAttribute('data-m'); llState.sel = null; llSyncMode(); renderLineListExplorer();
   }));
-  document.getElementById('llFind').addEventListener('input', e => { llState.search = e.target.value; llState.start = 0; renderLineListExplorer(); });
-  document.getElementById('llOrb').addEventListener('click', () => { llState.status = 'ALL'; llState.sel = null; llState.start = 0; renderLineListExplorer(); });
-  const step = d => { llState.start = Math.max(0, llState.start + d); renderLineListExplorer(); };
-  document.getElementById('llPrev').addEventListener('click', () => step(-llState.page));
-  document.getElementById('llNext').addEventListener('click', () => step(llState.page));
-  const col = document.getElementById('llNameCol'); let acc = 0;
+  document.getElementById('llFind').addEventListener('input', e => { llState.search = e.target.value; renderLineListExplorer(); });
+  document.getElementById('llOrb').addEventListener('click', () => { if(llState.status === 'ALL') return; llState.status = 'ALL'; llState.sel = null; renderLineListExplorer(); });
+  const go = t => { llState.target = Math.max(0, Math.min(llMaxPos(), t)); llUpdateFooter(); llKick(); };
+  document.getElementById('llPrev').addEventListener('click', () => go(Math.round(llState.target) - llState.page));
+  document.getElementById('llNext').addEventListener('click', () => go(Math.round(llState.target) + llState.page));
+  const col = document.getElementById('llNameCol'); let settle = 0;
   col.addEventListener('wheel', e => {
-    const next = document.getElementById('llNext'), prev = document.getElementById('llPrev');
-    if((e.deltaY < 0 && prev.disabled) || (e.deltaY > 0 && next.disabled)) return;
-    e.preventDefault(); acc += e.deltaY; const k = Math.trunc(acc/60); if(k){ acc -= k*60; step(k); }
+    const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+    if((dy < 0 && llState.target <= 0) || (dy > 0 && llState.target >= llMaxPos())) return;   // let the page scroll at the ends
+    e.preventDefault();
+    go(llState.target + dy / 90);
+    clearTimeout(settle);
+    settle = setTimeout(() => go(Math.round(llState.target)), 140);                            // click into place like a wheel detent
   }, { passive:false });
-  window.addEventListener('resize', () => requestAnimationFrame(llDrawLinks));
-  document.querySelectorAll('.tab-radio').forEach(r => r.addEventListener('change', () => { if(r.id === 'tab-radio-tracts') requestAnimationFrame(llDrawLinks); }));
-  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => requestAnimationFrame(llDrawLinks));
+  col.addEventListener('keydown', e => {
+    if(e.key === 'ArrowDown'){ e.preventDefault(); go(Math.round(llState.target) + 1); }
+    if(e.key === 'ArrowUp'){ e.preventDefault(); go(Math.round(llState.target) - 1); }
+  });
+  window.addEventListener('resize', llKick);
+  document.querySelectorAll('.tab-radio').forEach(r => r.addEventListener('change', () => { if(r.id === 'tab-radio-tracts'){ llState.t0 = performance.now(); llKick(); } }));
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(llKick);
   renderLineListExplorer();
 })();
 
