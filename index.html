@@ -1357,7 +1357,7 @@
       <section class="ov-card ov-mapcard">
         <div class="ov-ch"><div><h2>Parcel map</h2><div class="sub">Live from GIS · click a parcel for details · the legend filters by status</div></div>
           <button type="button" class="rp-btn" id="rpBtn" title="Replay the tracts newly acquired in the selected report week">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg><span>Replay week</span></button>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg><span>New this week</span></button>
           <div class="ov-mapsearch" role="combobox" aria-haspopup="listbox" aria-owns="ovSugg">
             <input type="search" id="ovMapSearch" placeholder="Search landowner or tract…" autocomplete="off" aria-autocomplete="list" aria-controls="ovSugg">
             <div class="ov-sugg" id="ovSugg" role="listbox"></div>
@@ -5130,7 +5130,7 @@ function rpUpdateButton(){
   b.title = !pair ? 'Replay needs this report and the one before it'
           : !n ? `No landowners moved to Acquired in the week of ${pair.cur}`
           : `Replay the ${n} landowner${n===1?'':'s'} acquired in the week of ${pair.cur}`;
-  b.querySelector('span').textContent = pair ? `Replay ${pair.cur}` : 'Replay week';
+  b.querySelector('span').textContent = `New for ${(pair ? pair.cur : history[currentWeekIdx].date)}`;
 }
 function rpSleep(ms){
   return new Promise(res => {
