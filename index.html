@@ -4636,10 +4636,10 @@ async function rpRun(){
     $('rpTitle').textContent = `Week of ${pair.cur}: +${ovFmt(acres)} net acres acquired`;
     $('rpSub').textContent = `${owners.length} landowner${owners.length===1?'':'s'} · ${ids.length} tract${ids.length===1?'':'s'}`;
     const all = [...feats.values()];
-    if(all.length){ const b = L.geoJSON({ type:'FeatureCollection', features:all }).getBounds(); if(b.isValid()) leafletMap.flyToBounds(b, { padding:[80,80], maxZoom:15, duration:1.6 }); }
+    if(all.length){ const b = L.geoJSON({ type:'FeatureCollection', features:all }).getBounds(); if(b.isValid()) leafletMap.flyToBounds(b, { padding:[80,80], maxZoom:15, duration:0.9 }); }
     $('rpPause').textContent = 'Close';
     rp.finished = true;
-    await rpSleep(8000);
+    await rpSleep(3000);   // short closing overview, then back to normal
   }
   rpEnd();
 }
