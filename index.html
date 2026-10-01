@@ -852,6 +852,39 @@
   .ov-move .move-item{ flex-direction:column; gap:1px; font-size:11px; padding:4px 0; }
   .ov-move .lo-empty, .ov-move .move-sublist > div{ font-size:11px; }
   .ov-move-old{ font-size:12.5px; color: var(--text-lo); padding:6px 2px; }
+  /* ---- weekly acquisition replay ---- */
+  .rp-btn{ display:inline-flex; align-items:center; gap:6px; flex-shrink:0; cursor:pointer; font:600 12.5px 'Inter',sans-serif;
+    padding:8px 13px; border-radius:12px; color: var(--on-soft); background: var(--blue-soft); border:1px solid var(--blue); }
+  .rp-btn svg{ width:13px; height:13px; }
+  .rp-btn:hover{ box-shadow: 0 0 0 3px var(--blue-glow); }
+  .rp-btn[disabled]{ opacity:.45; cursor:default; box-shadow:none; }
+  .ov-mapcard .ov-ch{ align-items:center; }
+  .ov-mapcard .ov-ch > div:first-child{ flex:1; min-width:0; }
+  .rp-panel{ position:absolute; left:24px; bottom:24px; z-index:1100; width:330px; padding:13px 15px 12px; border-radius:14px;
+    background: var(--overlay-bg); border:1px solid var(--border); box-shadow: 0 14px 36px rgba(15,23,42,.28);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--text-hi); }
+  .rp-panel[hidden]{ display:none; }
+  .rp-top{ display:flex; justify-content:space-between; align-items:center; }
+  .rp-tag{ font:700 10px 'Inter',sans-serif; letter-spacing:.1em; text-transform:uppercase; color:#0b0f1a; background:#ffff73; padding:3px 8px; border-radius:999px; }
+  .rp-step{ font-family:'JetBrains Mono',monospace; font-size:11px; color: var(--text-lo); }
+  .rp-title{ font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600; margin-top:8px; line-height:1.25; min-height:19px; }
+  .rp-sub{ font-size:12px; color: var(--text-mid); margin-top:2px; min-height:16px; }
+  .rp-count{ margin-top:9px; display:flex; align-items:baseline; gap:5px; font-size:11.5px; color: var(--text-lo); }
+  .rp-count b{ font-family:'JetBrains Mono',monospace; font-size:20px; color: var(--text-hi); }
+  .rp-bar{ height:4px; border-radius:2px; background: var(--track); margin-top:9px; overflow:hidden; }
+  .rp-bar i{ display:block; height:100%; width:0; background:#d4b800; transition: width .5s ease; }
+  .rp-ctrl{ display:flex; gap:8px; align-items:center; margin-top:11px; }
+  .rp-ctrl > button, .rp-speed button{ all:unset; cursor:pointer; font:600 11.5px 'Inter',sans-serif; padding:5px 11px; border-radius:8px;
+    background: var(--panel-elev); border:1px solid var(--border); color: var(--text-hi); }
+  .rp-ctrl > button:hover, .rp-speed button:hover{ border-color: var(--blue-soft); }
+  .rp-speed{ display:flex; gap:3px; margin-left:auto; }
+  .rp-speed button{ padding:5px 8px; }
+  .rp-speed button[aria-pressed="true"]{ background: var(--blue-soft); color: var(--on-soft); border-color: var(--blue); }
+  #leafletMap.replaying .leaflet-overlay-pane{ opacity:.28; transition: opacity .8s ease; }
+  .leaflet-overlay-pane{ transition: opacity .8s ease; }
+  .rp-pulse{ animation: rpPulse 1.6s ease-out 1; transform-box: fill-box; transform-origin: center; }
+  @keyframes rpPulse{ 0%{ stroke-width:14; stroke-opacity:.9; } 100%{ stroke-width:2.5; stroke-opacity:1; } }
+  @media (prefers-reduced-motion: reduce){ .rp-pulse{ animation:none; } }
   .ov-tip{ position:fixed; z-index:60; pointer-events:none; background: rgba(15,23,42,.94); color:#fff; font-size:12px; line-height:1.4;
     padding:7px 10px; border-radius:8px; box-shadow: 0 8px 20px rgba(0,0,0,.25); display:none; max-width:260px; }
   .ov-tip b{ font-family:'JetBrains Mono',monospace; }
@@ -1323,11 +1356,26 @@
       <div class="ov-kpis" id="ovKpis"></div>
       <section class="ov-card ov-mapcard">
         <div class="ov-ch"><div><h2>Parcel map</h2><div class="sub">Live from GIS · click a parcel for details · the legend filters by status</div></div>
+          <button type="button" class="rp-btn" id="rpBtn" title="Replay the tracts newly acquired in the selected report week">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg><span>Replay week</span></button>
           <div class="ov-mapsearch" role="combobox" aria-haspopup="listbox" aria-owns="ovSugg">
             <input type="search" id="ovMapSearch" placeholder="Search landowner or tract…" autocomplete="off" aria-autocomplete="list" aria-controls="ovSugg">
             <div class="ov-sugg" id="ovSugg" role="listbox"></div>
           </div></div>
-        <div class="ov-map-slot" id="mapSlotOverview"></div>
+        <div class="ov-map-slot" id="mapSlotOverview">
+          <div class="rp-panel" id="rpPanel" hidden>
+            <div class="rp-top"><span class="rp-tag" id="rpTag">Replay</span><span class="rp-step" id="rpStep"></span></div>
+            <div class="rp-title" id="rpTitle"></div>
+            <div class="rp-sub" id="rpSub"></div>
+            <div class="rp-count"><b id="rpAcres">+0.0</b><span>ac acquired</span><b id="rpOwners" style="margin-left:14px">0</b><span id="rpOwnersLbl">landowners</span></div>
+            <div class="rp-bar"><i id="rpBar"></i></div>
+            <div class="rp-ctrl">
+              <button type="button" id="rpPause">Pause</button>
+              <div class="rp-speed" id="rpSpeed"><button type="button" data-s="0.5">½×</button><button type="button" data-s="1" aria-pressed="true">1×</button><button type="button" data-s="2">2×</button></div>
+              <button type="button" id="rpStop">Stop</button>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
     <div class="ov-col">
@@ -4468,6 +4516,7 @@ function ovBindTips(root){
 
 function renderOverview(){
   ovInit();
+  if(typeof rpUpdateButton === 'function') rpUpdateButton();
   if(!document.getElementById('ovStage')) return;
   const all = buildTractRows();
   const base = ovBase();                                   // broker + parish
@@ -5042,6 +5091,164 @@ function llSyncMode(){ document.querySelectorAll('#llMode button').forEach(x => 
   document.querySelectorAll('.tab-radio').forEach(r => r.addEventListener('change', () => { if(r.id === 'tab-radio-tracts'){ llState.t0 = performance.now(); llKick(); } }));
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(llKick);
   renderLineListExplorer();
+})();
+
+
+/* =====================================================================
+   Weekly acquisition replay (map)
+   Compares the selected report week with the one before it (landownerSnapshots), finds the
+   landowners who moved into ACQUIRED, then flies the map to each of their tracts in turn and
+   fills them in, with a running total. Pause / speed / stop controls on the overlay.
+   ===================================================================== */
+var rp = { running:false, paused:false, stop:false, speed:1, layer:null };
+function rpWeekPair(){
+  const keys = Object.keys(typeof landownerSnapshots !== 'undefined' ? landownerSnapshots : {});
+  const cur = history[currentWeekIdx] && history[currentWeekIdx].date;
+  const prev = currentWeekIdx > 0 ? history[currentWeekIdx-1].date : null;
+  return (cur && prev && keys.includes(cur) && keys.includes(prev)) ? { cur, prev } : null;
+}
+function rpNewlyAcquired(pair){
+  const before = new Map(landownerSnapshots[pair.prev].map(o => [o.aid ?? o.name, o]));
+  const isLatest = currentWeekIdx === history.length - 1;
+  return landownerSnapshots[pair.cur]
+    .filter(o => o.status === 'ACQUIRED' && (!before.has(o.aid ?? o.name) || before.get(o.aid ?? o.name).status !== 'ACQUIRED'))
+    .map(o => {
+      const det = landownerDetails[o.name];
+      let tracts = det && det.tracts ? det.tracts : [];
+      // latest week: only the tracts that are acquired now; older weeks: the owner's tracts
+      if(isLatest){ const acq = tracts.filter(t => t.status === 'ACQUIRED'); if(acq.length) tracts = acq; }
+      return { name:o.name, acres:o.acres || 0, from: before.has(o.aid ?? o.name) ? before.get(o.aid ?? o.name).status : 'NEW', broker:o.assigned, tracts };
+    })
+    .filter(o => o.tracts.length)
+    .sort((a,b) => b.acres - a.acres);
+}
+function rpUpdateButton(){
+  const b = document.getElementById('rpBtn'); if(!b || !rp) return;   // rp is set once this script section has run
+  const pair = rpWeekPair();
+  const n = pair ? rpNewlyAcquired(pair).length : 0;
+  b.disabled = !pair || !n || rp.running;
+  b.title = !pair ? 'Replay needs this report and the one before it'
+          : !n ? `No landowners moved to Acquired in the week of ${pair.cur}`
+          : `Replay the ${n} landowner${n===1?'':'s'} acquired in the week of ${pair.cur}`;
+  b.querySelector('span').textContent = pair ? `Replay ${pair.cur}` : 'Replay week';
+}
+function rpSleep(ms){
+  return new Promise(res => {
+    let left = ms, last = performance.now();
+    (function tick(){
+      if(rp.stop) return res(false);
+      const now = performance.now();
+      if(!rp.paused) left -= (now - last) * rp.speed;
+      last = now;
+      if(left <= 0) return res(true);
+      requestAnimationFrame(tick);
+    })();
+  });
+}
+function rpQuery(ids){
+  return new Promise(res => {
+    const list = ids.map(t => `'${String(t).replace(/'/g,"''")}'`).join(',');
+    leafletParcelLayer.query().where(`${ARCGIS_TRACT_FIELD} IN (${list})`).run((err, fc) => res(err || !fc ? null : fc));
+  });
+}
+function rpCount(el, from, to, ms, fmt){
+  const t0 = performance.now();
+  (function f(now){ const p = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1-p, 3); el.textContent = fmt(from + (to-from)*e); if(p < 1 && !rp.stop) requestAnimationFrame(f); })(t0);
+}
+async function rpRun(){
+  const pair = rpWeekPair(); if(!pair || rp.running) return;
+  if(!leafletMap || !leafletParcelLayer){ setLeafletStatus('The map is still loading — try again in a moment.'); return; }
+  const owners = rpNewlyAcquired(pair); if(!owners.length) return;
+  Object.assign(rp, { running:true, paused:false, stop:false });
+  rpUpdateButton();
+  if(typeof clearTractSelection === 'function') clearTractSelection();
+  const panel = document.getElementById('rpPanel'), mapEl = document.getElementById('leafletMap');
+  const $ = id => document.getElementById(id);
+  panel.hidden = false; $('rpPause').textContent = 'Pause';
+  $('rpTag').textContent = `Week of ${pair.cur}`; $('rpTitle').textContent = 'Loading tracts…'; $('rpSub').textContent = '';
+  $('rpAcres').textContent = '+0.0'; $('rpOwners').textContent = '0'; $('rpBar').style.width = '0%'; $('rpStep').textContent = '';
+  const ids = [...new Set(owners.flatMap(o => o.tracts.map(t => t.id)))];
+  const fc = await rpQuery(ids);
+  const feats = new Map(); (fc && fc.features || []).forEach(f => feats.set(String(f.properties[ARCGIS_TRACT_FIELD]), f));
+  if(!leafletMap.getPane('replayPane')){ leafletMap.createPane('replayPane'); leafletMap.getPane('replayPane').style.zIndex = 450; }
+  rp.layer = L.layerGroup().addTo(leafletMap);
+  mapEl.classList.add('replaying');
+  // 1) pull back to the whole project
+  $('rpTitle').textContent = `${owners.length} landowner${owners.length===1?'':'s'} acquired`;
+  $('rpSub').textContent = `${pair.prev} → ${pair.cur} · ${ids.length} tract${ids.length===1?'':'s'}`;
+  refocusLeafletMap();
+  let ok = await rpSleep(1800);
+  let acres = 0, done = 0;
+  const yellow = statusColor('ACQUIRED');
+  for(const o of owners){
+    if(!ok) break;
+    const shapes = o.tracts.map(t => feats.get(String(t.id))).filter(Boolean);
+    $('rpStep').textContent = `${done+1} / ${owners.length}`;
+    $('rpTitle').textContent = o.name;
+    $('rpSub').textContent = `${ovTitle(o.from)} → Acquired · ${o.tracts.length} tract${o.tracts.length===1?'':'s'}${o.broker ? ' · ' + ovTitle(o.broker) : ''}`;
+    // 2) glide to the landowner's tracts
+    if(shapes.length){
+      const b = L.geoJSON({ type:'FeatureCollection', features:shapes }).getBounds();
+      if(b.isValid()) leafletMap.flyToBounds(b, { padding:[90,90], maxZoom:16, duration: 1.8 / rp.speed });
+    }
+    ok = await rpSleep(2000); if(!ok) break;
+    // 3) fill them in, one tract after another
+    for(const t of o.tracts){
+      const f = feats.get(String(t.id));
+      if(f){
+        const g = L.geoJSON(f, { pane:'replayPane', interactive:false,
+          style:{ color:'#ffffff', weight:2.5, fillColor:yellow, fillOpacity:0 } }).addTo(rp.layer);
+        g.eachLayer(l => { const el = l.getElement && l.getElement(); if(el) el.classList.add('rp-pulse'); });
+        const t0 = performance.now();
+        await new Promise(res => (function fade(now){ const p = Math.min(1, (now - t0) * rp.speed / 900);
+          g.setStyle({ fillOpacity: 0.85 * p, color: p < 1 ? '#ffffff' : '#7a6a00' }); (p < 1 && !rp.stop) ? requestAnimationFrame(fade) : res(); })(t0));
+      }
+      const prevAc = acres; acres += t.acres || 0;
+      rpCount($('rpAcres'), prevAc, acres, 700 / rp.speed, v => '+' + ovFmt(v));
+      ok = await rpSleep(650); if(!ok) break;
+    }
+    done++;
+    $('rpOwners').textContent = done; $('rpOwnersLbl').textContent = `landowner${done===1?'':'s'}`;
+    $('rpBar').style.width = (done / owners.length * 100).toFixed(1) + '%';
+    ok = ok && await rpSleep(1300);
+  }
+  // 4) wrap up: show everything acquired this week
+  if(ok){
+    $('rpStep').textContent = 'Done';
+    $('rpTitle').textContent = `Week of ${pair.cur}: +${ovFmt(acres)} net acres acquired`;
+    $('rpSub').textContent = `${owners.length} landowner${owners.length===1?'':'s'} · ${ids.length} tract${ids.length===1?'':'s'}`;
+    const all = [...feats.values()];
+    if(all.length){ const b = L.geoJSON({ type:'FeatureCollection', features:all }).getBounds(); if(b.isValid()) leafletMap.flyToBounds(b, { padding:[80,80], maxZoom:15, duration:1.6 }); }
+    $('rpPause').textContent = 'Close';
+    rp.finished = true;
+    await rpSleep(8000);
+  }
+  rpEnd();
+}
+function rpEnd(){
+  rp.stop = true;
+  const mapEl = document.getElementById('leafletMap');
+  if(mapEl) mapEl.classList.remove('replaying');
+  if(rp.layer && leafletMap){ leafletMap.removeLayer(rp.layer); rp.layer = null; }
+  const panel = document.getElementById('rpPanel'); if(panel) panel.hidden = true;
+  if(rp.running && leafletMap) refocusLeafletMap();
+  rp.running = false; rp.finished = false;
+  rpUpdateButton();
+}
+(function wireReplay(){
+  const b = document.getElementById('rpBtn'); if(!b) return;
+  b.addEventListener('click', rpRun);
+  document.getElementById('rpPause').addEventListener('click', e => {
+    if(rp.finished){ rpEnd(); return; }
+    rp.paused = !rp.paused; e.target.textContent = rp.paused ? 'Resume' : 'Pause';
+  });
+  document.getElementById('rpStop').addEventListener('click', rpEnd);
+  document.querySelectorAll('#rpSpeed button').forEach(x => x.addEventListener('click', () => {
+    rp.speed = parseFloat(x.getAttribute('data-s'));
+    document.querySelectorAll('#rpSpeed button').forEach(y => y.setAttribute('aria-pressed', y === x));
+  }));
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && rp.running) rpEnd(); });
+  rpUpdateButton();
 })();
 
 initLeafletMap();
