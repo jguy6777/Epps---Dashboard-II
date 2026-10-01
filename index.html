@@ -910,7 +910,7 @@
   /* ---------------- Line List: status explorer ---------------- */
   /* The Line List table is kept (hidden) only because the Excel exports read from it */
   #tabPanel-tracts > .section-head, #tabPanel-tracts > .lo-panel{ display:none; }
-  .ll-wrap{ display:grid; grid-template-columns: minmax(0,1fr) 360px; gap:14px; margin-bottom:10px; align-items:stretch; }
+  .ll-wrap{ display:grid; grid-template-columns: minmax(0,1fr) 470px; gap:14px; margin-bottom:10px; align-items:stretch; }
   .ll-card{ padding:16px 18px 12px; }
   .ll-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
   .ll-head h2{ font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:600; color: var(--text-hi); }
@@ -984,6 +984,8 @@
   .ll-r .dot{ width:9px; height:9px; border-radius:50%; background: var(--sx-c); }
   .ll-r .nm{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .ll-r .nm small{ display:block; font-size:10.5px; color: var(--text-lo); }
+  .ll-detail > *{ flex-shrink:0; }   /* never squash the note / tiles — the panel scrolls instead */
+  .ll-r .nm .sa{ margin-left:6px; font-family:'Inter',sans-serif; font-size:10px; font-weight:400; color: var(--text-lo); opacity:.85; }
   .ll-r .v{ font-family:'JetBrains Mono',monospace; font-size:11px; color: var(--text-mid); text-align:right; white-space:nowrap; }
   .ll-contact{ background: var(--panel-elev); border:1px solid var(--border-soft); border-radius:10px; padding:9px 12px; font-size:12px; color: var(--text-hi); line-height:1.45; }
   .ll-note{ white-space:pre-wrap; max-height:180px; overflow:auto; }
@@ -4220,6 +4222,12 @@ function llSA(r){
   const exp = m ? `${m[2]}/${m[3]}/${m[1]}` : (r.saExp ? llT(r.saExp) : '—');
   return `SA exp. ${exp} · Lease ${r.saLease ? llEsc(r.saLease) : '—'}`;
 }
+/* compact form for beside the tract number: "exp 03/24/2027 · #17-123-90101-01" */
+function llSAShort(r){
+  const m = String(r.saExp || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const exp = m ? `${m[2]}/${m[3]}/${m[1]}` : (r.saExp ? llT(r.saExp) : '—');
+  return `SA exp ${exp} · #${r.saLease ? llEsc(r.saLease) : '—'}`;
+}
 function llInt(v){ return v == null ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:6 }); }
 // Status used by the explorer: landowner's own status in "By landowner", tract status in "By tract".
 function llSt(r){ return (llState && llState.mode === 'tract') ? r.trStatus : (r.loStatus || r.trStatus); }
@@ -4357,8 +4365,8 @@ function llRenderDetail(entries, statuses){
       ${note ? `<div class="ll-contact ll-note"><small>${llEsc(note.date)}</small>${llEsc(note.text)}</div>`
              : `<div class="ll-contact ll-note" style="color:var(--text-lo)">No notes on file for this landowner in the current export.</div>`}
       <div class="ll-sec">Tracts</div>
-      <div class="ll-rows">${all.map(r => `<button type="button" class="ll-r" data-tract="${llEsc(r.tractId)}" style="--sx-c:${statusColor(r.loStatus || r.trStatus)}" title="Show on map">
-          <span class="dot"></span><span class="nm">${llEsc(r.tractId)}<small>${llSA(r)}</small><small>${llEsc(llT(r.loStatus || r.trStatus))} · tract: ${llEsc(llT(r.trStatus))} · interest ${llInt(r.interest)}</small></span><span class="v">${llNum(r.acres)} ac</span></button>`).join('')}</div>
+      <div class="ll-rows">${all.map(r => `<button type="button" class="ll-r" data-tract="${llEsc(r.tractId)}" style="--sx-c:${statusColor(r.loStatus || r.trStatus)}" title="${llEsc(r.tractId)} — ${llSA(r).replace(/<[^>]+>/g,'')} · click to show on map">
+          <span class="dot"></span><span class="nm">${llEsc(r.tractId)}<span class="sa">${llSAShort(r)}</span><small>${llEsc(llT(r.loStatus || r.trStatus))} · tract: ${llEsc(llT(r.trStatus))} · interest ${llInt(r.interest)}</small></span><span class="v">${llNum(r.acres)} ac</span></button>`).join('')}</div>
       ${iol ? `<div class="ll-sec">Contact</div><div class="ll-contact">${llEsc(iol.address)}<br>${llEsc(iol.city)}, ${llEsc(iol.state)} ${llEsc(iol.zip)}
           ${iol.mailedDate ? `<small>Mailed: ${llEsc(typeof iolFormatMailedDate === 'function' ? iolFormatMailedDate(iol.mailedDate) : iol.mailedDate)}${iol.deliveryUrl ? ` · <a href="${llEsc(iol.deliveryUrl)}" target="_blank" rel="noopener">tracking</a>` : ''}</small>` : ''}</div>` : ''}
       <div class="ll-btns"><button type="button" class="ll-btn" id="llMapBtn">Show on map</button></div>`;
