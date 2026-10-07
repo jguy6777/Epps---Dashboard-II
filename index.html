@@ -848,6 +848,13 @@
   .ov-move .featured-sub{ font-size:11px; line-height:1.35; }
   .ov-move .badge{ font-size:9px; padding:3px 7px; }
   .ov-move .move-sublists{ grid-template-columns: 1fr 1fr; gap:10px; }
+  /* backward-movement list: landowner + previous → current status */
+  .mv-bwd-list{ display:flex; flex-direction:column; gap:3px; margin-top:8px; }
+  .mv-bwd-row{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12px; }
+  .mv-bwd-row button{ all:unset; cursor:pointer; font-weight:600; color: var(--text-hi); min-width:0;
+    text-decoration:underline; text-decoration-color: var(--border); text-underline-offset:3px; }
+  .mv-bwd-row button:hover{ color: var(--sel-edge); text-decoration-color: var(--sel-edge); }
+  .mv-bwd-row span{ flex-shrink:0; font-size:11px; color: var(--text-mid); white-space:nowrap; }
   .ov-move .move-sublist{ padding:10px 12px; border-radius:12px; min-width:0; }
   .ov-move .move-sublist h4{ font-size:12px; margin-bottom:5px; }
   .ov-move .move-item{ flex-direction:column; gap:1px; font-size:11px; padding:4px 0; }
@@ -1373,6 +1380,7 @@
   .nv-stage #leafletMap{ height:100vh !important; min-height:0 !important; border-radius:0 !important; }
   .nv-stage .map-legend, .nv-stage .pr-wrap, .nv-stage .map-embed-fallback:empty{ display:none; }
   body.nv-open .lo-modal-backdrop{ z-index:4000; }
+  body.nv-open .lo-modal-map{ display:none; }   /* the view already zooms to the landowner */
   .nv-panel{ position:absolute; top:16px; right:16px; bottom:16px; width:340px; z-index:1100;
     display:flex; flex-direction:column; background: var(--overlay-bg); color: var(--text-hi);
     border:1px solid var(--border); border-radius:14px; box-shadow: 0 14px 40px rgba(0,0,0,.35); overflow:hidden;
@@ -3411,8 +3419,31 @@ if(mvBackwardCount === 0){
       <div>
         <div class="featured-title">${mvBackwardCount} landowner${mvBackwardCount===1?'':'s'} regressed in the pipeline this week</div>
         <div class="featured-sub">${fmtInt(mvChangedTotal - mvBackwardCount)} other status change${(mvChangedTotal - mvBackwardCount)===1?'':'s'} moved forward</div>
+        ${mvBackwardDetailHtml()}
       </div>
     </div>`;
+  mvBackwardEl.querySelectorAll('.mv-bwd-row button[data-owner]').forEach(b => b.addEventListener('click', () =>
+    openLandownerModal(b.getAttribute('data-owner'), b.getAttribute('data-tract'))));
+}
+
+/* Who moved backward: compares the last two weekly snapshots and lists each landowner with
+   their previous and current status (click a name for the landowner details). */
+function mvBackwardDetailHtml(){
+  const keys = Object.keys(typeof landownerSnapshots !== 'undefined' ? landownerSnapshots : {});
+  const cur = history[history.length-1].date, prev = history[history.length-2] && history[history.length-2].date;
+  if(!prev || !keys.includes(cur) || !keys.includes(prev)) return '';
+  const rank = s => { const i = DATA_STATUS_ORDER.indexOf(s); return i < 0 ? 99 : i; };   // lower = more advanced
+  const before = new Map(landownerSnapshots[prev].map(o => [o.aid ?? o.name, o]));
+  const movers = landownerSnapshots[cur]
+    .map(o => ({ o, p: before.get(o.aid ?? o.name) }))
+    .filter(x => x.p && rank(x.o.status) > rank(x.p.status))
+    .sort((a,b) => (b.o.acres || 0) - (a.o.acres || 0));
+  if(!movers.length) return '';
+  return `<div class="mv-bwd-list">${movers.map(({o, p}) => {
+    const d = landownerDetails[o.name] || {}; const t = (d.tracts && d.tracts[0]) ? d.tracts[0].id : '';
+    return `<div class="mv-bwd-row"><button type="button" data-owner="${escHtml(o.name)}" data-tract="${escHtml(t)}" title="Open landowner details">${escHtml(o.name)}</button>
+      <span>${escHtml(ovTitle(p.status))} → ${escHtml(ovTitle(o.status))}</span></div>`;
+  }).join('')}</div>`;
 }
 
 document.getElementById('newLandownersCount').textContent = newLandowners.length;
@@ -5013,6 +5044,11 @@ async function rpRun(){
   // Lift the map out of its card while full screen (the card's effects would otherwise trap position:fixed)
   st.home = { parent: stage.parentNode, next: stage.nextSibling };
   document.body.appendChild(stage);
+  // The landowner details window lives inside the page wrapper, which sits below the full-screen map —
+  // lift it to the top level too while this view is open, so "Landowner details" shows above the map
+  const modal = document.getElementById('loModalBackdrop');
+  st.modalHome = { parent: modal.parentNode, next: modal.nextSibling };
+  document.body.appendChild(modal);
   rp.running = true; rpUpdateButton();
 
   // ---- side panel ----
@@ -5036,7 +5072,7 @@ async function rpRun(){
           <div class="nv-owner">${ovEsc(o.name)}</div>
           <div class="nv-meta">${ovEsc(meta)}</div>
           <div class="nv-change">${ovEsc(o.from === 'NEW' ? 'new landowner' : ovTitle(o.from).toLowerCase())} → acquired</div>
-          <button type="button" class="nv-notes" data-owner="${ovEsc(o.name)}">Landowner details</button>
+          <button type="button" class="nv-notes" data-owner="${ovEsc(o.name)}" data-tract="${ovEsc(o.tracts[0] ? o.tracts[0].id : '')}">Landowner details</button>
         </div>
       </li>`; }).join('')}</ul>`;
   L.DomEvent.disableClickPropagation(ui);
@@ -5058,7 +5094,7 @@ async function rpRun(){
     li.addEventListener('mouseleave', () => nvStyle(null));
   });
   ui.querySelectorAll('.nv-notes').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation(); openLandownerModal(b.getAttribute('data-owner'));
+    e.stopPropagation(); openLandownerModal(b.getAttribute('data-owner'), b.getAttribute('data-tract'));
   }));
 
   // ---- the new tracts on the map ----
@@ -5129,6 +5165,8 @@ function rpEnd(){
     const ui = document.getElementById('nvPanel'); if(ui) ui.remove();
     st.stage.classList.remove('nv-stage');
     if(st.home && st.home.parent) st.home.parent.insertBefore(st.stage, st.home.next);
+    const modal = document.getElementById('loModalBackdrop');
+    if(modal && st.modalHome && st.modalHome.parent) st.modalHome.parent.insertBefore(modal, st.modalHome.next);
     if(leafletMap){ leafletMap.invalidateSize(); }
     window.scrollTo({ top: st.scrollY, behavior: 'instant' });
     if(rp.running && leafletMap) setTimeout(refocusLeafletMap, 60);
