@@ -1338,6 +1338,34 @@
     .move-stats{ grid-template-columns: repeat(2, minmax(0,1fr)); }
     .move-stat{ min-width:0; }
   }
+  /* Print-to-PDF control on the map */
+  .pr-wrap{ font:500 12.5px 'Inter',sans-serif; color: var(--text-hi); }
+  .pr-toggle{ display:inline-flex; align-items:center; gap:6px; cursor:pointer; font:600 12.5px 'Inter',sans-serif;
+    padding:7px 11px; border-radius:10px; border:1px solid var(--border); background: var(--overlay-bg); color: var(--text-hi);
+    box-shadow: 0 6px 18px var(--shadow-lg); }
+  .pr-toggle:hover{ border-color: var(--blue-soft); box-shadow: 0 0 0 3px var(--blue-glow); }
+  .pr-toggle svg{ width:14px; height:14px; }
+  .pr-badge{ min-width:18px; padding:1px 5px; border-radius:9px; background:#00b8d4; color:#fff; font-size:11px; text-align:center; }
+  .pr-panel{ margin-top:8px; width:250px; padding:12px; border-radius:12px; background: var(--overlay-bg);
+    border:1px solid var(--border); box-shadow: 0 14px 36px var(--shadow-lg); display:flex; flex-direction:column; gap:8px; }
+  .pr-panel[hidden], .pr-badge[hidden]{ display:none; }
+  .pr-head{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; color: var(--text-lo); }
+  .pr-pick, .pr-sm, .pr-go{ font:600 12.5px 'Inter',sans-serif; cursor:pointer; border-radius:10px; padding:7px 10px;
+    border:1px solid var(--border); background: var(--panel-elev); color: var(--text-hi); }
+  .pr-pick:hover, .pr-sm:hover, .pr-go:hover:not([disabled]){ border-color: var(--blue-soft); box-shadow: 0 0 0 3px var(--blue-glow); }
+  .pr-pick[aria-pressed="true"]{ background:#00b8d4; border-color:#00b8d4; color:#fff; }
+  .pr-row{ display:flex; gap:6px; } .pr-row .pr-sm{ flex:1; }
+  .pr-hint, .pr-status{ font-size:11.5px; color: var(--text-lo); line-height:1.4; }
+  .pr-status:empty{ display:none; }
+  .pr-count{ font-weight:600; }
+  .pr-lbl{ display:flex; flex-direction:column; gap:4px; font-size:11px; color: var(--text-lo); }
+  .pr-lbl input, .pr-lbl select{ font:500 12.5px 'Inter',sans-serif; color: var(--text-hi); background: var(--panel-elev);
+    border:1px solid var(--border); border-radius:8px; padding:6px 8px; box-shadow: inset 0 1px 2px rgba(15,23,42,.08); }
+  .pr-lbl input:focus, .pr-lbl select:focus{ outline:none; border-color: var(--blue-soft); box-shadow: 0 0 0 3px var(--blue-glow); }
+  .pr-chk{ display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; }
+  .pr-go{ background: var(--blue-soft); color:#fff; border-color: var(--blue-soft); }
+  .pr-go[disabled]{ opacity:.45; cursor:default; box-shadow:none; }
+  #leafletMap.pr-picking .leaflet-interactive{ cursor: copy; }
 </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -3674,10 +3702,12 @@ async function initLeafletMap(){
     };
     leafletLegendControl.addTo(leafletMap);
     renderMapLegend();
+    initPrintControl();
 
     // Click a parcel on the map to see its owner(s) and details
     leafletParcelLayer.on('click', (e) => {
       const id = e.layer && e.layer.feature && e.layer.feature.properties[ARCGIS_TRACT_FIELD];
+      if(id && printPickMode){ togglePrintTract(id); return; }
       if(id) selectTractOnMap(id, { zoom: false, latlng: e.latlng });
     });
 
@@ -3721,6 +3751,236 @@ function refocusLeafletMap(){
       if(!err2 && b2 && b2.isValid()) fit(b2);
     });
   });
+}
+
+/* ---------------- Print selected tracts to PDF (ArcGIS print service via /api/print) ----------------
+   A "Print" button on the map opens a panel. Turn on "Pick tracts", click parcels to add/remove them
+   (or add every tract the map is currently showing), then "Create PDF". The PDF is drawn by the
+   organization's ArcGIS Server print service, framed on the selected tracts and outlined in cyan,
+   with the other parcels shown by status for context. */
+const printSel = new Set();          // tract IDs picked for printing
+let printPickMode = false;           // when on, parcel clicks add/remove tracts instead of opening the popup
+let printSelLayer = null;            // cyan outlines of the picked tracts
+let printSelReq = 0;
+const PRINT_LAYOUTS = [
+  ['Tabloid ANSI B Landscape', '11×17 landscape'],
+  ['Tabloid ANSI B Portrait',  '11×17 portrait'],
+  ['Letter ANSI A Landscape',  'Letter landscape'],
+  ['Letter ANSI A Portrait',   'Letter portrait'],
+];
+
+function printQuote(id){ return `'${String(id).replace(/'/g, "''")}'`; }
+function printWhereFor(ids){ return `${ARCGIS_TRACT_FIELD} IN (${[...ids].map(printQuote).join(',')})`; }
+
+function initPrintControl(){
+  const ctl = L.control({ position: 'topleft' });
+  ctl.onAdd = () => {
+    const wrap = L.DomUtil.create('div', 'pr-wrap');
+    wrap.innerHTML = `
+      <button type="button" class="pr-toggle" id="prToggle" title="Print selected tracts to PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>
+        <span>Print</span><b class="pr-badge" id="prBadge" hidden>0</b></button>
+      <div class="pr-panel" id="prPanel" hidden>
+        <div class="pr-head">Print tracts to PDF</div>
+        <button type="button" class="pr-pick" id="prPick" aria-pressed="false">Pick tracts on map</button>
+        <div class="pr-hint" id="prHint">Turn on, then click parcels to add or remove them.</div>
+        <div class="pr-row">
+          <button type="button" class="pr-sm" id="prAddFiltered" title="Add every tract the map is showing with the current filters">Add all shown</button>
+          <button type="button" class="pr-sm" id="prClear">Clear</button>
+        </div>
+        <div class="pr-count" id="prCount">No tracts selected</div>
+        <label class="pr-lbl">Title<input type="text" id="prTitle" maxlength="90" value="EPPS Gas Storage Project — Selected Tracts"></label>
+        <label class="pr-lbl">Page<select id="prLayout">${PRINT_LAYOUTS.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
+        <label class="pr-chk"><input type="checkbox" id="prContext" checked> Show surrounding tracts by status</label>
+        <button type="button" class="pr-go" id="prGo" disabled>Create PDF</button>
+        <div class="pr-status" id="prStatus"></div>
+      </div>`;
+    L.DomEvent.disableClickPropagation(wrap);
+    L.DomEvent.disableScrollPropagation(wrap);
+    return wrap;
+  };
+  ctl.addTo(leafletMap);
+
+  const $ = (id) => document.getElementById(id);
+  $('prToggle').addEventListener('click', () => {
+    const p = $('prPanel'); p.hidden = !p.hidden;
+    if(p.hidden) setPrintPickMode(false);
+  });
+  $('prPick').addEventListener('click', () => setPrintPickMode(!printPickMode));
+  $('prClear').addEventListener('click', () => { printSel.clear(); refreshPrintSelection(); });
+  $('prAddFiltered').addEventListener('click', addShownTractsToPrint);
+  $('prGo').addEventListener('click', createPrintPdf);
+  refreshPrintSelection();
+}
+
+function setPrintPickMode(on){
+  printPickMode = !!on;
+  const b = document.getElementById('prPick');
+  if(b){ b.setAttribute('aria-pressed', String(printPickMode)); b.textContent = printPickMode ? 'Picking — click parcels' : 'Pick tracts on map'; }
+  const m = document.getElementById('leafletMap');
+  if(m) m.classList.toggle('pr-picking', printPickMode);
+  if(printPickMode && typeof clearTractSelection === 'function') clearTractSelection();
+}
+
+function togglePrintTract(id){
+  id = String(id);
+  if(printSel.has(id)) printSel.delete(id); else printSel.add(id);
+  refreshPrintSelection();
+}
+
+function addShownTractsToPrint(){
+  if(!leafletParcelLayer) return;
+  const st = document.getElementById('prStatus');
+  st.textContent = 'Adding tracts…';
+  leafletParcelLayer.query().where(currentLeafletWhere()).fields([ARCGIS_TRACT_FIELD]).returnGeometry(false).run((err, fc) => {
+    if(err || !fc){ st.textContent = 'Could not read the tracts on the map.'; return; }
+    fc.features.forEach(f => { const id = f.properties && f.properties[ARCGIS_TRACT_FIELD]; if(id) printSel.add(String(id)); });
+    st.textContent = '';
+    refreshPrintSelection();
+  });
+}
+
+/* Redraws the cyan outlines and updates the count / buttons */
+function refreshPrintSelection(){
+  const n = printSel.size;
+  const cnt = document.getElementById('prCount');
+  if(cnt) cnt.textContent = n ? `${n} tract${n === 1 ? '' : 's'} selected` : 'No tracts selected';
+  const badge = document.getElementById('prBadge');
+  if(badge){ badge.hidden = !n; badge.textContent = n; }
+  const go = document.getElementById('prGo');
+  if(go) go.disabled = !n;
+
+  const req = ++printSelReq;
+  if(!n){ if(printSelLayer){ leafletMap.removeLayer(printSelLayer); printSelLayer = null; } return; }
+  leafletParcelLayer.query().where(printWhereFor(printSel)).run((err, fc) => {
+    if(req !== printSelReq || err || !fc) return;
+    if(printSelLayer) leafletMap.removeLayer(printSelLayer);
+    printSelLayer = L.geoJSON(fc, { interactive: false, style: { color: '#00e5ff', weight: 3, fill: false } }).addTo(leafletMap);
+  });
+}
+
+function hexToRgba(hex, a){
+  const h = String(hex).replace('#', '');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16), a];
+}
+
+/* Extent of the picked tracts in Web Mercator, padded so the outlines aren't on the page edge */
+function printExtent(){
+  return new Promise((resolve, reject) => {
+    leafletParcelLayer.query().where(printWhereFor(printSel)).bounds((err, b) => {
+      if(err || !b || !b.isValid()) return reject(new Error('Could not find the selected tracts on the map layer.'));
+      const sw = L.Projection.SphericalMercator.project(b.getSouthWest());
+      const ne = L.Projection.SphericalMercator.project(b.getNorthEast());
+      const w = Math.max(ne.x - sw.x, 300), h = Math.max(ne.y - sw.y, 300);
+      const cx = (sw.x + ne.x) / 2, cy = (sw.y + ne.y) / 2, pad = 1.25;
+      resolve({ xmin: cx - w*pad/2, ymin: cy - h*pad/2, xmax: cx + w*pad/2, ymax: cy + h*pad/2, spatialReference: { wkid: 102100 } });
+    });
+  });
+}
+
+function buildPrintWebMap(extent, title){
+  const base = ARCGIS_SERVICE_URL.replace(/\/\d+$/, '');
+  const statuses = (typeof data !== 'undefined' && data ? data.map(d => d.name) : Object.keys(STATUS_COLORS));
+  const sfs = (fill, outline, width) => ({ type: 'esriSFS', style: fill ? 'esriSFSSolid' : 'esriSFSNull',
+    color: fill || [0,0,0,0], outline: { type: 'esriSLS', style: 'esriSLSSolid', color: outline, width } });
+  const textSym = (size, color, halo) => ({ type: 'esriTS', color, haloColor: halo, haloSize: 1.2,
+    font: { family: 'Arial', size, weight: 'bold' } });
+  const showContext = document.getElementById('prContext').checked;
+
+  const layers = [];
+  layers.push({
+    id: 'parcels', title: 'Tract status', url: `${base}/8`, opacity: 0.8, visibility: true,
+    layerDefinition: {
+      // Context on: the parcels the map is showing (current filters) plus the picked ones, coloured by status.
+      // Context off: only the picked tracts are coloured.
+      definitionExpression: showContext ? `(${currentLeafletWhere()}) OR ${printWhereFor(printSel)}` : printWhereFor(printSel),
+      drawingInfo: { renderer: {
+        type: 'uniqueValue', field1: ARCGIS_STATUS_FIELD,
+        defaultSymbol: sfs([136,136,136,200], [0,0,0,255], 0.4), defaultLabel: 'Other',
+        uniqueValueInfos: statuses.map(st => ({ value: st, label: ovTitle(st),
+          symbol: sfs(hexToRgba(statusColor(st), 200), [0,0,0,255], 0.4) })),
+      } },
+    },
+  });
+  if(leafletShowSections) layers.push({
+    id: 'sections', title: 'Sections', url: `${base}/4`, visibility: true, showLabels: true,
+    layerDefinition: { drawingInfo: {
+      renderer: { type: 'simple', symbol: sfs(null, [156,156,156,255], 0.8) },
+      labelingInfo: [{ labelExpression: '[SECTN]', labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal',
+        symbol: textSym(8, [255,255,255,255], [0,0,0,255]) }],
+    } },
+  });
+  if(leafletShowTownships) layers.push({
+    id: 'townships', title: 'Townships', url: `${base}/5`, visibility: true, showLabels: true,
+    layerDefinition: { drawingInfo: {
+      renderer: { type: 'simple', symbol: sfs(null, [0,0,0,255], 1.8) },
+      labelingInfo: [{ labelExpression: '[TOWN_RANGE]', labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal',
+        symbol: textSym(11, [0,0,0,255], [255,255,255,255]) }],
+    } },
+  });
+  layers.push({
+    id: 'boundary', title: 'Project boundary', url: `${base}/7`, visibility: true,
+    layerDefinition: { drawingInfo: { renderer: { type: 'simple', label: 'Project boundary', symbol: sfs(null, [168,0,0,255], 2.2) } } },
+  });
+  layers.push({
+    id: 'selected', title: 'Selected tracts', url: `${base}/8`, visibility: true,
+    layerDefinition: {
+      definitionExpression: printWhereFor(printSel),
+      drawingInfo: { renderer: { type: 'simple', label: 'Selected tract', symbol: sfs(null, [0,229,255,255], 2.6) } },
+    },
+  });
+
+  const n = printSel.size;
+  return {
+    mapOptions: { extent, spatialReference: { wkid: 102100 } },
+    baseMap: { title: 'Imagery', baseMapLayers: [{ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer' }] },
+    operationalLayers: layers,
+    exportOptions: { dpi: 200 },
+    layoutOptions: {
+      titleText: title,
+      authorText: `${n} tract${n === 1 ? '' : 's'} · printed ${new Date().toLocaleDateString('en-US')}`,
+      copyrightText: 'Imagery: Esri, Maxar, Earthstar Geographics',
+      scaleBarOptions: { metricUnit: 'esriKilometers', metricLabel: 'km', nonMetricUnit: 'esriMiles', nonMetricLabel: 'mi' },
+      legendOptions: { operationalLayers: [{ id: 'parcels' }, { id: 'selected' }, { id: 'boundary' }] },
+    },
+  };
+}
+
+async function createPrintPdf(){
+  const go = document.getElementById('prGo');
+  const st = document.getElementById('prStatus');
+  if(!printSel.size) return;
+  go.disabled = true;
+  st.textContent = 'Creating PDF — this can take up to a minute…';
+  try{
+    const title = (document.getElementById('prTitle').value || '').trim() || 'EPPS Gas Storage Project';
+    const layout = document.getElementById('prLayout').value;
+    const extent = await printExtent();
+    const webMap = buildPrintWebMap(extent, title);
+    const fileName = `EPPS tracts ${new Date().toISOString().slice(0,10)}`;
+    const res = await fetch('/api/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ webMap, layout, fileName }),
+    });
+    if(!res.ok){
+      const body = await res.json().catch(() => ({}));
+      const detail = body.detail ? ` (${typeof body.detail === 'string' ? body.detail : (body.detail.message || JSON.stringify(body.detail))})` : '';
+      throw new Error((body.error || `Print failed (${res.status})`) + detail);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    st.textContent = 'PDF downloaded.';
+  } catch(e){
+    console.error('[print]', e);
+    st.textContent = 'Could not create the PDF: ' + e.message;
+  } finally {
+    go.disabled = !printSel.size;
+  }
 }
 
 /* ---------------- Tract selection (list <-> map) ---------------- */

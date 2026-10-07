@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/print.js": { "maxDuration": 60 }
+  }
+}
