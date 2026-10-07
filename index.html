@@ -4930,7 +4930,8 @@ function llSyncMode(){ document.querySelectorAll('#llMode button').forEach(x => 
    Compares the selected report week with the one before it (landownerSnapshots) and finds the
    landowners who moved into ACQUIRED. The map goes full screen showing just those tracts
    (everything else dimmed), with a numbered landowner list on the right. Selecting a
-   landowner zooms to their tract(s); selecting it again, or "All new tracts", zooms back out.
+   landowner zooms to their tract(s); selecting it again, or "Full project area", zooms back out
+   to the whole AOI (the view also opens at the full AOI, so the new tracts are seen in context).
    Pins / tracts on the map select their landowner too. Esc or ✕ closes.
    ===================================================================== */
 var rp = { running:false };
@@ -4978,6 +4979,21 @@ function nvPadding(){
     ? { paddingTopLeft: [30, 30], paddingBottomRight: [30, Math.round(window.innerHeight * 0.45) + 30] }
     : { paddingTopLeft: [40, 40], paddingBottomRight: [340 + 56, 40] };
 }
+/* Full project extent: the AOI boundary layer, falling back to all parcels */
+let nvAoiBounds = null;
+function nvFullExtent(){
+  if(nvAoiBounds) return Promise.resolve(nvAoiBounds);
+  const viaLayer = (lyr) => new Promise(res => {
+    if(!lyr) return res(null);
+    lyr.query().where('1=1').bounds((err, b) => res(!err && b && b.isValid() ? b : null));
+  });
+  return viaLayer(leafletBoundaryLayer)
+    .then(b => b || viaLayer(leafletParcelLayer))
+    .then(b => (nvAoiBounds = b));
+}
+function nvFlyFull(){
+  return nvFullExtent().then(b => { if(b && rp.view) nvFly(b, 13); });
+}
 function nvFly(bounds, maxZoom){
   if(!bounds || !bounds.isValid()) return;
   const o = Object.assign({ maxZoom }, nvPadding());
@@ -5011,7 +5027,7 @@ async function rpRun(){
       <div class="nv-sub">${ids.length} tract${ids.length===1?'':'s'} · since ${ovEsc(pair.prev)}</div>
       <button type="button" class="nv-close" id="nvClose" title="Close (Esc)">✕</button>
     </div>
-    <button type="button" class="nv-all active" id="nvAll">All new tracts</button>
+    <button type="button" class="nv-all active" id="nvAll">Full project area</button>
     <ul class="nv-list" id="nvList">${owners.map((o, i) => {
       const meta = [`${o.tracts.length} tract${o.tracts.length===1?'':'s'}`, `${ovFmt(o.acres)} net ac`, o.broker ? ovTitle(o.broker) : ''].filter(Boolean).join(' · ');
       return `<li class="nv-item" tabindex="0" data-i="${i}">
@@ -5067,7 +5083,7 @@ async function rpRun(){
     });
   });
   nvStyle(null);
-  nvFly(st.layers.size ? L.featureGroup([...st.layers.values()]).getBounds() : null, 15);
+  nvFlyFull();
   setTimeout(() => { const c = document.getElementById('nvClose'); if(c) c.focus({ preventScroll: true }); }, 50);
 }
 
@@ -5097,8 +5113,8 @@ function nvSelect(i, fromMap){
     else setLeafletStatus(`${st.owners[st.selected].name}'s tract isn't on the map layer.`);
     const li = ui.querySelector(`.nv-item[data-i="${st.selected}"]`);
     if(li) li.scrollIntoView({ block:'nearest', behavior: NV_REDUCED ? 'auto' : 'smooth' });
-  } else if(st.layers.size){
-    nvFly(L.featureGroup([...st.layers.values()]).getBounds(), 15);
+  } else {
+    nvFlyFull();
   }
 }
 
