@@ -1339,7 +1339,7 @@
     .move-stat{ min-width:0; }
   }
   /* Print-to-PDF control on the map */
-  .pr-wrap{ font:500 12.5px 'Inter',sans-serif; color: var(--text-hi); }
+  .pr-wrap{ font:500 12.5px 'Inter',sans-serif; color: var(--text-hi); display:flex; flex-direction:column; align-items:flex-end; }
   .pr-toggle{ display:inline-flex; align-items:center; gap:6px; cursor:pointer; font:600 12.5px 'Inter',sans-serif;
     padding:7px 11px; border-radius:10px; border:1px solid var(--border); background: var(--overlay-bg); color: var(--text-hi);
     box-shadow: 0 6px 18px var(--shadow-lg); }
@@ -1366,6 +1366,49 @@
   .pr-go{ background: var(--blue-soft); color:#fff; border-color: var(--blue-soft); }
   .pr-go[disabled]{ opacity:.45; cursor:default; box-shadow:none; }
   #leafletMap.pr-picking .leaflet-interactive{ cursor: copy; }
+  .leaflet-top.leaflet-right{ z-index:1001; }  /* print panel opens over the legend */
+  /* ---- "New for <week>" view: full-screen map + landowner list (San Mateo pattern) ---- */
+  body.nv-open{ overflow:hidden; }
+  .nv-stage{ position:fixed !important; inset:0; margin:0 !important; z-index:3000; background:#0b0f17; border-radius:0 !important; }
+  .nv-stage #leafletMap{ height:100vh !important; min-height:0 !important; border-radius:0 !important; }
+  .nv-stage .map-legend, .nv-stage .pr-wrap, .nv-stage .map-embed-fallback:empty{ display:none; }
+  body.nv-open .lo-modal-backdrop{ z-index:4000; }
+  .nv-panel{ position:absolute; top:16px; right:16px; bottom:16px; width:340px; z-index:1100;
+    display:flex; flex-direction:column; background: var(--overlay-bg); color: var(--text-hi);
+    border:1px solid var(--border); border-radius:14px; box-shadow: 0 14px 40px rgba(0,0,0,.35); overflow:hidden;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transform: translateX(24px); opacity:0; transition: transform .35s ease, opacity .35s ease; font-family:'Inter',sans-serif; }
+  .nv-panel.in{ transform:none; opacity:1; }
+  .nv-head{ position:relative; padding:16px 44px 12px 16px; border-bottom:1px solid var(--border); }
+  .nv-kicker{ display:inline-block; font:700 10px 'Inter',sans-serif; letter-spacing:.1em; text-transform:uppercase;
+    color:#0b0f1a; background:#ffff73; padding:3px 8px; border-radius:999px; }
+  .nv-headline{ font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; margin-top:8px; line-height:1.25; }
+  .nv-sub{ font-size:12px; color: var(--text-mid); margin-top:3px; }
+  .nv-close{ position:absolute; top:12px; right:12px; width:30px; height:30px; border-radius:8px; cursor:pointer;
+    background: var(--panel-elev); border:1px solid var(--border); color: var(--text-hi); font-size:13px; }
+  .nv-close:hover{ border-color: var(--blue-soft); box-shadow: 0 0 0 3px var(--blue-glow); }
+  .nv-all{ margin:10px 12px 4px; align-self:flex-start; cursor:pointer; font:600 12px 'Inter',sans-serif; color: var(--text-mid);
+    background:none; border:1px solid var(--border); border-radius:999px; padding:5px 12px; }
+  .nv-all:hover, .nv-all.active{ color: var(--text-hi); border-color: var(--sel-edge); background: var(--row-sel); }
+  .nv-list{ list-style:none; margin:0; padding:6px 8px 12px; overflow-y:auto; flex:1; }
+  .nv-item{ display:grid; grid-template-columns:26px 1fr; gap:10px; align-items:start; cursor:pointer;
+    padding:9px 8px; border-radius:8px; border:1px solid transparent; transition: background .15s, border-color .15s; }
+  .nv-item:hover{ background: var(--faint-3, rgba(127,127,127,.08)); }
+  .nv-item.active{ background: var(--row-sel); border-color: var(--sel-edge); }
+  .nv-item:focus-visible{ outline:2px solid var(--blue-soft); outline-offset:1px; }
+  .nv-num{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font:600 11.5px 'JetBrains Mono',monospace; color:#0b0f17; background:#ffff73; }
+  .nv-owner{ font-size:13px; font-weight:600; line-height:1.3; }
+  .nv-meta{ font-family:'JetBrains Mono',monospace; font-size:11px; color: var(--text-mid); margin-top:2px; }
+  .nv-change{ font-size:11.5px; color: var(--text-lo); margin-top:2px; }
+  .nv-notes{ margin-top:5px; font:600 11.5px 'Inter',sans-serif; cursor:pointer; color: var(--sel-edge); background:none; border:0; padding:0;
+    text-decoration:underline; text-underline-offset:2px; }
+  .nv-pin{ background:none; border:0; }
+  .nv-pin span{ display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+    font:600 12px 'JetBrains Mono',monospace; color:#0b0f17; background:#ffff73; border:2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.45); transition: transform .15s; }
+  .nv-pin.active span, .nv-pin:hover span{ transform: scale(1.25); background:#fff; }
+  @media (max-width: 700px){ .nv-panel{ top:auto; left:10px; right:10px; bottom:10px; width:auto; max-height:45vh; } }
 </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1465,25 +1508,13 @@
       <div class="ov-kpis" id="ovKpis"></div>
       <section class="ov-card ov-mapcard">
         <div class="ov-ch"><div><h2>Parcel map</h2><div class="sub">Live from GIS · click a parcel for details · the legend filters by status</div></div>
-          <button type="button" class="rp-btn" id="rpBtn" title="Replay the tracts newly acquired in the selected report week">
+          <button type="button" class="rp-btn" id="rpBtn" title="Show the tracts newly acquired in the selected report week">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg><span>New this week</span></button>
           <div class="ov-mapsearch" role="combobox" aria-haspopup="listbox" aria-owns="ovSugg">
             <input type="search" id="ovMapSearch" placeholder="Search landowner or tract…" autocomplete="off" aria-autocomplete="list" aria-controls="ovSugg">
             <div class="ov-sugg" id="ovSugg" role="listbox"></div>
           </div></div>
         <div class="ov-map-slot" id="mapSlotOverview">
-          <div class="rp-panel" id="rpPanel" hidden>
-            <div class="rp-top"><span class="rp-tag" id="rpTag">Replay</span><span class="rp-step" id="rpStep"></span></div>
-            <div class="rp-title" id="rpTitle"></div>
-            <div class="rp-sub" id="rpSub"></div>
-            <div class="rp-count"><b id="rpAcres">+0.0</b><span>ac acquired</span><b id="rpOwners" style="margin-left:14px">0</b><span id="rpOwnersLbl">landowners</span></div>
-            <div class="rp-bar"><i id="rpBar"></i></div>
-            <div class="rp-ctrl">
-              <button type="button" id="rpPause">Pause</button>
-              <div class="rp-speed" id="rpSpeed"><button type="button" data-s="0.5">½×</button><button type="button" data-s="1" aria-pressed="true">1×</button><button type="button" data-s="2">2×</button></div>
-              <button type="button" id="rpStop">Stop</button>
-            </div>
-          </div>
         </div>
       </section>
     </div>
@@ -3708,6 +3739,7 @@ async function initLeafletMap(){
     leafletParcelLayer.on('click', (e) => {
       const id = e.layer && e.layer.feature && e.layer.feature.properties[ARCGIS_TRACT_FIELD];
       if(id && printPickMode){ togglePrintTract(id); return; }
+      if(rp && rp.running) return;   // the New-for-week view handles its own tract clicks
       if(id) selectTractOnMap(id, { zoom: false, latlng: e.latlng });
     });
 
@@ -3754,26 +3786,27 @@ function refocusLeafletMap(){
 }
 
 /* ---------------- Print selected tracts to PDF (ArcGIS print service via /api/print) ----------------
-   A "Print" button on the map opens a panel. Turn on "Pick tracts", click parcels to add/remove them
-   (or add every tract the map is currently showing), then "Create PDF". The PDF is drawn by the
-   organization's ArcGIS Server print service, framed on the selected tracts and outlined in cyan,
-   with the other parcels shown by status for context. */
+   A "Print" button (top-right of the map) opens a panel. Turn on "Pick tracts", click parcels to
+   add/remove them (or add every tract the map is currently showing), then "Create PDF".
+   The aerial with the tract outlines is drawn by the organization's ArcGIS Server print service
+   (MAP_ONLY), and the page around it — title, north arrow, scale bar and the landowner table at
+   the bottom — is assembled in the browser with pdf-lib. */
 const printSel = new Set();          // tract IDs picked for printing
 let printPickMode = false;           // when on, parcel clicks add/remove tracts instead of opening the popup
 let printSelLayer = null;            // cyan outlines of the picked tracts
 let printSelReq = 0;
-const PRINT_LAYOUTS = [
-  ['Tabloid ANSI B Landscape', '11×17 landscape'],
-  ['Tabloid ANSI B Portrait',  '11×17 portrait'],
-  ['Letter ANSI A Landscape',  'Letter landscape'],
-  ['Letter ANSI A Portrait',   'Letter portrait'],
+const PRINT_LAYOUTS = [            // value, label, page width × height in points
+  ['tabloid-l', '11×17 landscape', 1224, 792],
+  ['tabloid-p', '11×17 portrait',  792, 1224],
+  ['letter-l',  'Letter landscape', 792, 612],
+  ['letter-p',  'Letter portrait',  612, 792],
 ];
 
 function printQuote(id){ return `'${String(id).replace(/'/g, "''")}'`; }
 function printWhereFor(ids){ return `${ARCGIS_TRACT_FIELD} IN (${[...ids].map(printQuote).join(',')})`; }
 
 function initPrintControl(){
-  const ctl = L.control({ position: 'topleft' });
+  const ctl = L.control({ position: 'topright' });
   ctl.onAdd = () => {
     const wrap = L.DomUtil.create('div', 'pr-wrap');
     wrap.innerHTML = `
@@ -3791,7 +3824,6 @@ function initPrintControl(){
         <div class="pr-count" id="prCount">No tracts selected</div>
         <label class="pr-lbl">Title<input type="text" id="prTitle" maxlength="90" value="EPPS Gas Storage Project — Selected Tracts"></label>
         <label class="pr-lbl">Page<select id="prLayout">${PRINT_LAYOUTS.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}</select></label>
-        <label class="pr-chk"><input type="checkbox" id="prContext" checked> Show surrounding tracts by status</label>
         <button type="button" class="pr-go" id="prGo" disabled>Create PDF</button>
         <div class="pr-status" id="prStatus"></div>
       </div>`;
@@ -3859,91 +3891,74 @@ function refreshPrintSelection(){
   });
 }
 
-function hexToRgba(hex, a){
-  const h = String(hex).replace('#', '');
-  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16), a];
-}
-
-/* Extent of the picked tracts in Web Mercator, padded so the outlines aren't on the page edge */
-function printExtent(){
+/* Extent of the picked tracts (Web Mercator), padded and widened/heightened to the map box's shape */
+function printExtent(aspect){
   return new Promise((resolve, reject) => {
     leafletParcelLayer.query().where(printWhereFor(printSel)).bounds((err, b) => {
       if(err || !b || !b.isValid()) return reject(new Error('Could not find the selected tracts on the map layer.'));
       const sw = L.Projection.SphericalMercator.project(b.getSouthWest());
       const ne = L.Projection.SphericalMercator.project(b.getNorthEast());
-      const w = Math.max(ne.x - sw.x, 300), h = Math.max(ne.y - sw.y, 300);
-      const cx = (sw.x + ne.x) / 2, cy = (sw.y + ne.y) / 2, pad = 1.25;
-      resolve({ xmin: cx - w*pad/2, ymin: cy - h*pad/2, xmax: cx + w*pad/2, ymax: cy + h*pad/2, spatialReference: { wkid: 102100 } });
+      let w = Math.max(ne.x - sw.x, 300) * 1.2, h = Math.max(ne.y - sw.y, 300) * 1.2;
+      if(w / h < aspect) w = h * aspect; else h = w / aspect;
+      const cx = (sw.x + ne.x) / 2, cy = (sw.y + ne.y) / 2;
+      resolve({ extent: { xmin: cx - w/2, ymin: cy - h/2, xmax: cx + w/2, ymax: cy + h/2, spatialReference: { wkid: 102100 } },
+                lat: b.getCenter().lat });
     });
   });
 }
 
-function buildPrintWebMap(extent, title){
+/* Aerial + tract outlines (labelled with the tract ID), no status colours */
+function buildPrintWebMap(extent, pxW, pxH, dpi){
   const base = ARCGIS_SERVICE_URL.replace(/\/\d+$/, '');
-  const statuses = (typeof data !== 'undefined' && data ? data.map(d => d.name) : Object.keys(STATUS_COLORS));
-  const sfs = (fill, outline, width) => ({ type: 'esriSFS', style: fill ? 'esriSFSSolid' : 'esriSFSNull',
-    color: fill || [0,0,0,0], outline: { type: 'esriSLS', style: 'esriSLSSolid', color: outline, width } });
-  const textSym = (size, color, halo) => ({ type: 'esriTS', color, haloColor: halo, haloSize: 1.2,
-    font: { family: 'Arial', size, weight: 'bold' } });
-  const showContext = document.getElementById('prContext').checked;
-
-  const layers = [];
-  layers.push({
-    id: 'parcels', title: 'Tract status', url: `${base}/8`, opacity: 0.8, visibility: true,
-    layerDefinition: {
-      // Context on: the parcels the map is showing (current filters) plus the picked ones, coloured by status.
-      // Context off: only the picked tracts are coloured.
-      definitionExpression: showContext ? `(${currentLeafletWhere()}) OR ${printWhereFor(printSel)}` : printWhereFor(printSel),
-      drawingInfo: { renderer: {
-        type: 'uniqueValue', field1: ARCGIS_STATUS_FIELD,
-        defaultSymbol: sfs([136,136,136,200], [0,0,0,255], 0.4), defaultLabel: 'Other',
-        uniqueValueInfos: statuses.map(st => ({ value: st, label: ovTitle(st),
-          symbol: sfs(hexToRgba(statusColor(st), 200), [0,0,0,255], 0.4) })),
-      } },
-    },
-  });
-  if(leafletShowSections) layers.push({
-    id: 'sections', title: 'Sections', url: `${base}/4`, visibility: true, showLabels: true,
-    layerDefinition: { drawingInfo: {
-      renderer: { type: 'simple', symbol: sfs(null, [156,156,156,255], 0.8) },
-      labelingInfo: [{ labelExpression: '[SECTN]', labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal',
-        symbol: textSym(8, [255,255,255,255], [0,0,0,255]) }],
-    } },
-  });
-  if(leafletShowTownships) layers.push({
-    id: 'townships', title: 'Townships', url: `${base}/5`, visibility: true, showLabels: true,
-    layerDefinition: { drawingInfo: {
-      renderer: { type: 'simple', symbol: sfs(null, [0,0,0,255], 1.8) },
-      labelingInfo: [{ labelExpression: '[TOWN_RANGE]', labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal',
-        symbol: textSym(11, [0,0,0,255], [255,255,255,255]) }],
-    } },
-  });
-  layers.push({
-    id: 'boundary', title: 'Project boundary', url: `${base}/7`, visibility: true,
-    layerDefinition: { drawingInfo: { renderer: { type: 'simple', label: 'Project boundary', symbol: sfs(null, [168,0,0,255], 2.2) } } },
-  });
-  layers.push({
-    id: 'selected', title: 'Selected tracts', url: `${base}/8`, visibility: true,
-    layerDefinition: {
-      definitionExpression: printWhereFor(printSel),
-      drawingInfo: { renderer: { type: 'simple', label: 'Selected tract', symbol: sfs(null, [0,229,255,255], 2.6) } },
-    },
-  });
-
-  const n = printSel.size;
   return {
     mapOptions: { extent, spatialReference: { wkid: 102100 } },
     baseMap: { title: 'Imagery', baseMapLayers: [{ url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer' }] },
-    operationalLayers: layers,
-    exportOptions: { dpi: 200 },
-    layoutOptions: {
-      titleText: title,
-      authorText: `${n} tract${n === 1 ? '' : 's'} · printed ${new Date().toLocaleDateString('en-US')}`,
-      copyrightText: 'Imagery: Esri, Maxar, Earthstar Geographics',
-      scaleBarOptions: { metricUnit: 'esriKilometers', metricLabel: 'km', nonMetricUnit: 'esriMiles', nonMetricLabel: 'mi' },
-      legendOptions: { operationalLayers: [{ id: 'parcels' }, { id: 'selected' }, { id: 'boundary' }] },
-    },
+    operationalLayers: [{
+      id: 'selected', title: 'Selected tracts', url: `${base}/8`, visibility: true, showLabels: true,
+      layerDefinition: {
+        definitionExpression: printWhereFor(printSel),
+        drawingInfo: {
+          renderer: { type: 'simple', symbol: { type: 'esriSFS', style: 'esriSFSNull', color: [0,0,0,0],
+            outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [0,229,255,255], width: 2.4 } } },
+          labelingInfo: [{ labelExpression: `[${ARCGIS_TRACT_FIELD}]`, labelPlacement: 'esriServerPolygonPlacementAlwaysHorizontal',
+            symbol: { type: 'esriTS', color: [255,255,255,255], haloColor: [0,0,0,255], haloSize: 1.2,
+              font: { family: 'Arial', size: 8, weight: 'bold' } } }],
+        },
+      },
+    }],
+    exportOptions: { outputSize: [pxW, pxH], dpi },
   };
+}
+
+/* Landowner rows for the picked tracts, from the line list (0%-interest rows left out) */
+function printLandownerRows(){
+  const rows = (typeof eppsLineList !== 'undefined' ? eppsLineList : [])
+    .filter(r => printSel.has(String(r.tractId)) && r.interest);
+  rows.sort((a,b) => String(a.tractId).localeCompare(String(b.tractId)) || String(a.landowner).localeCompare(String(b.landowner)));
+  const found = new Set(rows.map(r => String(r.tractId)));
+  [...printSel].filter(t => !found.has(t)).sort().forEach(t => rows.push({ tractId: t, landowner: '(not in the line list)', interest: null }));
+  return rows;
+}
+
+let pdfLibPromise = null;
+function loadPdfLib(){
+  if(window.PDFLib) return Promise.resolve(window.PDFLib);
+  if(!pdfLibPromise) pdfLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js';
+    s.onload = () => resolve(window.PDFLib);
+    s.onerror = () => { pdfLibPromise = null; reject(new Error('Could not load the PDF library.')); };
+    document.head.appendChild(s);
+  });
+  return pdfLibPromise;
+}
+
+/* A round scale-bar length (in feet) that fits within maxFt */
+function printScaleStep(maxFt){
+  const steps = [50,100,200,250,500,1000,2000,2640,5280,10560,26400,52800];
+  let best = steps[0];
+  steps.forEach(s => { if(s <= maxFt) best = s; });
+  return best;
 }
 
 async function createPrintPdf(){
@@ -3953,22 +3968,123 @@ async function createPrintPdf(){
   go.disabled = true;
   st.textContent = 'Creating PDF — this can take up to a minute…';
   try{
+    const PDFLib = await loadPdfLib();
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const title = (document.getElementById('prTitle').value || '').trim() || 'EPPS Gas Storage Project';
-    const layout = document.getElementById('prLayout').value;
-    const extent = await printExtent();
-    const webMap = buildPrintWebMap(extent, title);
+    const [, , pageW, pageH] = PRINT_LAYOUTS.find(l => l[0] === document.getElementById('prLayout').value) || PRINT_LAYOUTS[0];
+
+    // ---- page geometry (points) ----
+    const M = 30, HEAD = 40, GAP = 10, ROW = 11, FS = 8;
+    const rows = printLandownerRows();
+    const tableW = pageW - 2*M;
+    const nCols = pageW >= 900 ? 2 : 1;                                   // landowner table columns side by side
+    const maxTableH = Math.round(pageH * 0.32);
+    const rowsPerCol = Math.max(1, Math.floor((maxTableH - 18) / ROW));
+    const firstCap = rowsPerCol * nCols;
+    const usedRowsPerCol = Math.min(rowsPerCol, Math.ceil(Math.min(rows.length, firstCap) / nCols));
+    const tableH = 18 + usedRowsPerCol * ROW;
+    const map = { x: M, y: M + tableH + GAP, w: pageW - 2*M };
+    map.h = pageH - M - HEAD - map.y;
+
+    // ---- the aerial from the ArcGIS print service ----
+    const dpi = 200;
+    const pxW = Math.round(map.w / 72 * dpi), pxH = Math.round(map.h / 72 * dpi);
+    const { extent, lat } = await printExtent(map.w / map.h);
     const fileName = `EPPS tracts ${new Date().toISOString().slice(0,10)}`;
     const res = await fetch('/api/print', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ webMap, layout, fileName }),
+      body: JSON.stringify({ webMap: buildPrintWebMap(extent, pxW, pxH, dpi), layout: 'MAP_ONLY', fileName }),
     });
     if(!res.ok){
       const body = await res.json().catch(() => ({}));
       const detail = body.detail ? ` (${typeof body.detail === 'string' ? body.detail : (body.detail.message || JSON.stringify(body.detail))})` : '';
       throw new Error((body.error || `Print failed (${res.status})`) + detail);
     }
-    const blob = await res.blob();
+    const mapBytes = await res.arrayBuffer();
+
+    // ---- assemble the page ----
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const ink = rgb(0.12, 0.16, 0.23), soft = rgb(0.39, 0.45, 0.55), line = rgb(0.80, 0.84, 0.88);
+    // Standard PDF fonts only cover basic Latin characters — swap anything else so text never fails
+    const safe = (t) => String(t == null ? '' : t).replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
+      .replace(/[^\x20-\x7e -ÿ–—•]/g, '?');
+    const fit = (t, f, size, w) => { t = safe(t); if(f.widthOfTextAtSize(t, size) <= w) return t;
+      while(t.length > 1 && f.widthOfTextAtSize(t + '…', size) > w) t = t.slice(0, -1); return t + '…'; };
+
+    const page = doc.addPage([pageW, pageH]);
+    const nTr = printSel.size;
+    page.drawText(fit(title, bold, 15, pageW - 2*M), { x: M, y: pageH - M - 15, size: 15, font: bold, color: ink });
+    page.drawText(safe(`${nTr} tract${nTr === 1 ? '' : 's'}  ·  printed ${new Date().toLocaleDateString('en-US')}`),
+      { x: M, y: pageH - M - 30, size: 9, font, color: soft });
+
+    const [mapPage] = await doc.embedPdf(mapBytes, [0]);
+    page.drawPage(mapPage, { x: map.x, y: map.y, width: map.w, height: map.h });
+    page.drawRectangle({ x: map.x, y: map.y, width: map.w, height: map.h, borderColor: ink, borderWidth: 0.8 });
+
+    // north arrow (top-right of the map)
+    const nx = map.x + map.w - 26, ny = map.y + map.h - 44;
+    page.drawRectangle({ x: nx - 12, y: ny - 6, width: 24, height: 36, color: rgb(1,1,1), opacity: 0.85 });
+    page.drawSvgPath('M 0 0 L 7 18 L 0 13 L -7 18 Z', { x: nx, y: ny + 28, color: ink });  // SVG y runs downward
+    page.drawText('N', { x: nx - 3.5, y: ny - 2, size: 9, font: bold, color: ink });
+
+    // scale bar (bottom-left of the map); ground metres per point = mercator metres per point × cos(lat)
+    const ftPerPt = (extent.xmax - extent.xmin) / map.w * Math.cos(lat * Math.PI / 180) * 3.28084;
+    const stepFt = printScaleStep(ftPerPt * 110);
+    const barW = stepFt / ftPerPt;
+    const label = stepFt >= 2640 ? `${+(stepFt / 5280).toFixed(2)} mi` : `${stepFt.toLocaleString('en-US')} ft`;
+    const sx = map.x + 10, sy = map.y + 10;
+    page.drawRectangle({ x: sx - 6, y: sy - 4, width: barW + 12 + 8 + font.widthOfTextAtSize(label, 8), height: 18, color: rgb(1,1,1), opacity: 0.85 });
+    page.drawRectangle({ x: sx, y: sy + 2, width: barW / 2, height: 5, color: ink });
+    page.drawRectangle({ x: sx + barW / 2, y: sy + 2, width: barW / 2, height: 5, color: rgb(1,1,1), borderColor: ink, borderWidth: 0.6 });
+    page.drawRectangle({ x: sx, y: sy + 2, width: barW, height: 5, borderColor: ink, borderWidth: 0.6 });
+    page.drawText(label, { x: sx + barW + 6, y: sy + 1.5, size: 8, font, color: ink });
+    page.drawText('Imagery: Esri, Maxar, Earthstar Geographics', { x: map.x + map.w - 6 - font.widthOfTextAtSize('Imagery: Esri, Maxar, Earthstar Geographics', 6),
+      y: map.y + 4, size: 6, font, color: rgb(1,1,1) });
+
+    // ---- landowner table ----
+    const colGap = 18;
+    const colW = (tableW - colGap * (nCols - 1)) / nCols;
+    const drawTable = (pg, list, top, perCol) => {
+      for(let c = 0; c < nCols; c++){
+        const chunk = list.slice(c * perCol, (c + 1) * perCol);
+        if(!chunk.length) break;
+        const x0 = M + c * (colW + colGap);
+        const wTract = Math.min(130, colW * 0.3), wInt = 52, wOwner = colW - wTract - wInt - 8;
+        let y = top - 10;
+        pg.drawText('TRACT', { x: x0, y, size: 7, font: bold, color: soft });
+        pg.drawText('LANDOWNER', { x: x0 + wTract, y, size: 7, font: bold, color: soft });
+        pg.drawText('INTEREST', { x: x0 + colW - wInt, y, size: 7, font: bold, color: soft });
+        pg.drawLine({ start: { x: x0, y: y - 4 }, end: { x: x0 + colW, y: y - 4 }, thickness: 0.6, color: line });
+        y -= 4;
+        let prevTract = null;
+        chunk.forEach((r, i) => {
+          y -= ROW;
+          if(i % 2) pg.drawRectangle({ x: x0, y: y - 3, width: colW, height: ROW, color: rgb(0.95, 0.96, 0.98) });
+          const t = String(r.tractId);
+          if(t !== prevTract) pg.drawText(fit(t, font, FS, wTract - 6), { x: x0, y, size: FS, font, color: ink });
+          prevTract = t;
+          pg.drawText(fit(r.landowner, font, FS, wOwner), { x: x0 + wTract, y, size: FS, font, color: ink });
+          if(r.interest != null) pg.drawText(`${(r.interest * 100).toFixed(2)}%`, { x: x0 + colW - wInt, y, size: FS, font, color: ink });
+        });
+      }
+    };
+    drawTable(page, rows.slice(0, firstCap), M + tableH, usedRowsPerCol);
+
+    // anything that didn't fit goes on continuation pages
+    let rest = rows.slice(firstCap);
+    const contPerCol = Math.floor((pageH - 2*M - HEAD - 18) / ROW);
+    while(rest.length){
+      const pg = doc.addPage([pageW, pageH]);
+      pg.drawText(fit(title + ' — landowners (continued)', bold, 12, pageW - 2*M), { x: M, y: pageH - M - 12, size: 12, font: bold, color: ink });
+      const take = rest.slice(0, contPerCol * nCols);
+      drawTable(pg, take, pageH - M - HEAD, Math.ceil(take.length / nCols));
+      rest = rest.slice(take.length);
+    }
+
+    const blob = new Blob([await doc.save()], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = fileName + '.pdf';
@@ -4804,12 +4920,14 @@ function llSyncMode(){ document.querySelectorAll('#llMode button').forEach(x => 
 
 
 /* =====================================================================
-   Weekly acquisition replay (map)
-   Compares the selected report week with the one before it (landownerSnapshots), finds the
-   landowners who moved into ACQUIRED, then flies the map to each of their tracts in turn and
-   fills them in, with a running total. Pause / speed / stop controls on the overlay.
+   "New for <week>" view (map) — same pattern as the San Mateo dashboard flyover.
+   Compares the selected report week with the one before it (landownerSnapshots) and finds the
+   landowners who moved into ACQUIRED. The map goes full screen showing just those tracts
+   (everything else dimmed), with a numbered landowner list on the right. Selecting a
+   landowner zooms to their tract(s); selecting it again, or "All new tracts", zooms back out.
+   Pins / tracts on the map select their landowner too. Esc or ✕ closes.
    ===================================================================== */
-var rp = { running:false, paused:false, stop:false, speed:1, layer:null };
+var rp = { running:false };
 function rpWeekPair(){
   const keys = Object.keys(typeof landownerSnapshots !== 'undefined' ? landownerSnapshots : {});
   const cur = history[currentWeekIdx] && history[currentWeekIdx].date;
@@ -4836,23 +4954,10 @@ function rpUpdateButton(){
   const pair = rpWeekPair();
   const n = pair ? rpNewlyAcquired(pair).length : 0;
   b.disabled = !pair || !n || rp.running;
-  b.title = !pair ? 'Replay needs this report and the one before it'
+  b.title = !pair ? 'Needs this report and the one before it'
           : !n ? `No landowners moved to Acquired in the week of ${pair.cur}`
-          : `Replay the ${n} landowner${n===1?'':'s'} acquired in the week of ${pair.cur}`;
+          : `Show the ${n} landowner${n===1?'':'s'} acquired in the week of ${pair.cur}`;
   b.querySelector('span').textContent = `New for ${(pair ? pair.cur : history[currentWeekIdx].date)}`;
-}
-function rpSleep(ms){
-  return new Promise(res => {
-    let left = ms, last = performance.now();
-    (function tick(){
-      if(rp.stop) return res(false);
-      const now = performance.now();
-      if(!rp.paused) left -= (now - last) * rp.speed;
-      last = now;
-      if(left <= 0) return res(true);
-      requestAnimationFrame(tick);
-    })();
-  });
 }
 function rpQuery(ids){
   return new Promise(res => {
@@ -4860,103 +4965,163 @@ function rpQuery(ids){
     leafletParcelLayer.query().where(`${ARCGIS_TRACT_FIELD} IN (${list})`).run((err, fc) => res(err || !fc ? null : fc));
   });
 }
-function rpCount(el, from, to, ms, fmt){
-  const t0 = performance.now();
-  (function f(now){ const p = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1-p, 3); el.textContent = fmt(from + (to-from)*e); if(p < 1 && !rp.stop) requestAnimationFrame(f); })(t0);
+const NV_REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function nvPadding(){
+  // keep the tracts clear of the side panel (or the bottom sheet on narrow screens)
+  return window.innerWidth <= 700
+    ? { paddingTopLeft: [30, 30], paddingBottomRight: [30, Math.round(window.innerHeight * 0.45) + 30] }
+    : { paddingTopLeft: [40, 40], paddingBottomRight: [340 + 56, 40] };
 }
+function nvFly(bounds, maxZoom){
+  if(!bounds || !bounds.isValid()) return;
+  const o = Object.assign({ maxZoom }, nvPadding());
+  if(NV_REDUCED) leafletMap.fitBounds(bounds, o); else leafletMap.flyToBounds(bounds, Object.assign(o, { duration: 0.9 }));
+}
+
 async function rpRun(){
   const pair = rpWeekPair(); if(!pair || rp.running) return;
   if(!leafletMap || !leafletParcelLayer){ setLeafletStatus('The map is still loading — try again in a moment.'); return; }
   const owners = rpNewlyAcquired(pair); if(!owners.length) return;
-  Object.assign(rp, { running:true, paused:false, stop:false });
-  rpUpdateButton();
   if(typeof clearTractSelection === 'function') clearTractSelection();
-  const panel = document.getElementById('rpPanel'), mapEl = document.getElementById('leafletMap');
-  const $ = id => document.getElementById(id);
-  panel.hidden = false; $('rpPause').textContent = 'Pause';
-  $('rpTag').textContent = `Week of ${pair.cur}`; $('rpTitle').textContent = 'Loading tracts…'; $('rpSub').textContent = '';
-  $('rpAcres').textContent = '+0.0'; $('rpOwners').textContent = '0'; $('rpBar').style.width = '0%'; $('rpStep').textContent = '';
-  const ids = [...new Set(owners.flatMap(o => o.tracts.map(t => t.id)))];
+  if(typeof setPrintPickMode === 'function') setPrintPickMode(false);
+
+  const mapEl = document.getElementById('leafletMap');
+  const stage = mapEl.parentElement;
+  const st = rp.view = { owners, pair, selected: null, layers: new Map(), pins: [], stage, scrollY: window.scrollY };
+  // Lift the map out of its card while full screen (the card's effects would otherwise trap position:fixed)
+  st.home = { parent: stage.parentNode, next: stage.nextSibling };
+  document.body.appendChild(stage);
+  rp.running = true; rpUpdateButton();
+
+  // ---- side panel ----
+  const ids = [...new Set(owners.flatMap(o => o.tracts.map(t => String(t.id))))];
+  const acres = owners.reduce((a, o) => a + (o.acres || 0), 0);
+  const ui = document.createElement('div');
+  ui.className = 'nv-panel'; ui.id = 'nvPanel';
+  ui.innerHTML = `
+    <div class="nv-head">
+      <div class="nv-kicker">New for ${ovEsc(pair.cur)}</div>
+      <div class="nv-headline">${owners.length} landowner${owners.length===1?'':'s'} acquired · ${ovFmt(acres)} net ac</div>
+      <div class="nv-sub">${ids.length} tract${ids.length===1?'':'s'} · since ${ovEsc(pair.prev)}</div>
+      <button type="button" class="nv-close" id="nvClose" title="Close (Esc)">✕</button>
+    </div>
+    <button type="button" class="nv-all active" id="nvAll">All new tracts</button>
+    <ul class="nv-list" id="nvList">${owners.map((o, i) => {
+      const meta = [`${o.tracts.length} tract${o.tracts.length===1?'':'s'}`, `${ovFmt(o.acres)} net ac`, o.broker ? ovTitle(o.broker) : ''].filter(Boolean).join(' · ');
+      return `<li class="nv-item" tabindex="0" data-i="${i}">
+        <span class="nv-num">${i + 1}</span>
+        <div>
+          <div class="nv-owner">${ovEsc(o.name)}</div>
+          <div class="nv-meta">${ovEsc(meta)}</div>
+          <div class="nv-change">${ovEsc(o.from === 'NEW' ? 'new landowner' : ovTitle(o.from).toLowerCase())} → acquired</div>
+          <button type="button" class="nv-notes" data-owner="${ovEsc(o.name)}">Landowner details</button>
+        </div>
+      </li>`; }).join('')}</ul>`;
+  L.DomEvent.disableClickPropagation(ui);
+  L.DomEvent.disableScrollPropagation(ui);
+  stage.appendChild(ui);
+  stage.classList.add('nv-stage');
+  document.body.classList.add('nv-open');
+  mapEl.classList.add('replaying');
+  leafletMap.invalidateSize();
+  requestAnimationFrame(() => ui.classList.add('in'));
+
+  ui.querySelector('#nvClose').addEventListener('click', rpEnd);
+  ui.querySelector('#nvAll').addEventListener('click', () => nvSelect(null));
+  ui.querySelectorAll('.nv-item').forEach(li => {
+    const i = +li.dataset.i;
+    li.addEventListener('click', () => nvSelect(i));
+    li.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); nvSelect(i); } });
+    li.addEventListener('mouseenter', () => nvStyle(i));
+    li.addEventListener('mouseleave', () => nvStyle(null));
+  });
+  ui.querySelectorAll('.nv-notes').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); openLandownerModal(b.getAttribute('data-owner'));
+  }));
+
+  // ---- the new tracts on the map ----
   const fc = await rpQuery(ids);
+  if(rp.view !== st) return;                          // closed while loading
   const feats = new Map(); (fc && fc.features || []).forEach(f => feats.set(String(f.properties[ARCGIS_TRACT_FIELD]), f));
   if(!leafletMap.getPane('replayPane')){ leafletMap.createPane('replayPane'); leafletMap.getPane('replayPane').style.zIndex = 450; }
-  rp.layer = L.layerGroup().addTo(leafletMap);
-  mapEl.classList.add('replaying');
-  // 1) pull back to the whole project
-  $('rpTitle').textContent = `${owners.length} landowner${owners.length===1?'':'s'} acquired`;
-  $('rpSub').textContent = `${pair.prev} → ${pair.cur} · ${ids.length} tract${ids.length===1?'':'s'}`;
-  refocusLeafletMap();
-  let ok = await rpSleep(1800);
-  let acres = 0, done = 0;
-  const yellow = statusColor('ACQUIRED');
-  for(const o of owners){
-    if(!ok) break;
+  st.group = L.featureGroup().addTo(leafletMap);
+  owners.forEach((o, i) => {
     const shapes = o.tracts.map(t => feats.get(String(t.id))).filter(Boolean);
-    $('rpStep').textContent = `${done+1} / ${owners.length}`;
-    $('rpTitle').textContent = o.name;
-    $('rpSub').textContent = `${ovTitle(o.from)} → Acquired · ${o.tracts.length} tract${o.tracts.length===1?'':'s'}${o.broker ? ' · ' + ovTitle(o.broker) : ''}`;
-    // 2) glide to the landowner's tracts
-    if(shapes.length){
-      const b = L.geoJSON({ type:'FeatureCollection', features:shapes }).getBounds();
-      if(b.isValid()) leafletMap.flyToBounds(b, { padding:[90,90], maxZoom:16, duration: 1.8 / rp.speed });
-    }
-    ok = await rpSleep(2000); if(!ok) break;
-    // 3) fill them in, one tract after another
-    for(const t of o.tracts){
-      const f = feats.get(String(t.id));
-      if(f){
-        const g = L.geoJSON(f, { pane:'replayPane', interactive:false,
-          style:{ color:'#ffffff', weight:2.5, fillColor:yellow, fillOpacity:0 } }).addTo(rp.layer);
-        g.eachLayer(l => { const el = l.getElement && l.getElement(); if(el) el.classList.add('rp-pulse'); });
-        const t0 = performance.now();
-        await new Promise(res => (function fade(now){ const p = Math.min(1, (now - t0) * rp.speed / 900);
-          g.setStyle({ fillOpacity: 0.85 * p, color: p < 1 ? '#ffffff' : '#7a6a00' }); (p < 1 && !rp.stop) ? requestAnimationFrame(fade) : res(); })(t0));
-      }
-      const prevAc = acres; acres += t.acres || 0;
-      rpCount($('rpAcres'), prevAc, acres, 700 / rp.speed, v => '+' + ovFmt(v));
-      ok = await rpSleep(650); if(!ok) break;
-    }
-    done++;
-    $('rpOwners').textContent = done; $('rpOwnersLbl').textContent = `landowner${done===1?'':'s'}`;
-    $('rpBar').style.width = (done / owners.length * 100).toFixed(1) + '%';
-    ok = ok && await rpSleep(1300);
-  }
-  // 4) wrap up: show everything acquired this week
-  if(ok){
-    $('rpStep').textContent = 'Done';
-    $('rpTitle').textContent = `Week of ${pair.cur}: +${ovFmt(acres)} net acres acquired`;
-    $('rpSub').textContent = `${owners.length} landowner${owners.length===1?'':'s'} · ${ids.length} tract${ids.length===1?'':'s'}`;
-    const all = [...feats.values()];
-    if(all.length){ const b = L.geoJSON({ type:'FeatureCollection', features:all }).getBounds(); if(b.isValid()) leafletMap.flyToBounds(b, { padding:[80,80], maxZoom:15, duration:0.9 }); }
-    $('rpPause').textContent = 'Close';
-    rp.finished = true;
-    await rpSleep(3000);   // short closing overview, then back to normal
-  }
-  rpEnd();
+    if(!shapes.length) return;
+    const g = L.geoJSON({ type:'FeatureCollection', features: shapes }, { pane:'replayPane' }).addTo(st.group);
+    g.on('click', e => { L.DomEvent.stop(e); nvSelect(i, true); });
+    st.layers.set(i, g);
+    shapes.forEach(f => {
+      const pin = L.marker(L.geoJSON(f).getBounds().getCenter(), {
+        icon: L.divIcon({ className: 'nv-pin', html: `<span>${i + 1}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
+        keyboard: false, riseOnHover: true, pane: 'markerPane'
+      }).addTo(st.group);
+      pin.on('click', e => { L.DomEvent.stop(e); nvSelect(i, true); });
+      pin._nv = i; st.pins.push(pin);
+    });
+  });
+  nvStyle(null);
+  nvFly(st.layers.size ? L.featureGroup([...st.layers.values()]).getBounds() : null, 15);
+  setTimeout(() => { const c = document.getElementById('nvClose'); if(c) c.focus({ preventScroll: true }); }, 50);
 }
+
+function nvStyle(hover){
+  const st = rp.view; if(!st) return;
+  const yellow = statusColor('ACQUIRED');
+  st.layers.forEach((g, i) => {
+    if(i === st.selected) g.setStyle({ color:'#ffffff', weight:4, opacity:1, fillColor:yellow, fillOpacity:0.7 });
+    else if(i === hover) g.setStyle({ color:'#ffffff', weight:3, opacity:1, fillColor:yellow, fillOpacity:0.6 });
+    else g.setStyle({ color:yellow, weight:2.5, opacity:1, fillColor:yellow, fillOpacity: st.selected != null ? 0.3 : 0.55 });
+  });
+  const sel = st.layers.get(st.selected); if(sel) sel.bringToFront();
+  st.pins.forEach(p => { const el = p.getElement(); if(el) el.classList.toggle('active', p._nv === st.selected || p._nv === hover); });
+}
+
+/* List clicks toggle; map clicks (pin or tract) always select */
+function nvSelect(i, fromMap){
+  const st = rp.view; if(!st) return;
+  st.selected = (i == null) ? null : ((fromMap || st.selected !== i) ? i : null);
+  const ui = document.getElementById('nvPanel');
+  ui.querySelectorAll('.nv-item').forEach(li => li.classList.toggle('active', +li.dataset.i === st.selected));
+  ui.querySelector('#nvAll').classList.toggle('active', st.selected == null);
+  nvStyle(null);
+  if(st.selected != null){
+    const g = st.layers.get(st.selected);
+    if(g) nvFly(g.getBounds(), 16);
+    else setLeafletStatus(`${st.owners[st.selected].name}'s tract isn't on the map layer.`);
+    const li = ui.querySelector(`.nv-item[data-i="${st.selected}"]`);
+    if(li) li.scrollIntoView({ block:'nearest', behavior: NV_REDUCED ? 'auto' : 'smooth' });
+  } else if(st.layers.size){
+    nvFly(L.featureGroup([...st.layers.values()]).getBounds(), 15);
+  }
+}
+
 function rpEnd(){
-  rp.stop = true;
+  const st = rp.view;
+  rp.view = null;
   const mapEl = document.getElementById('leafletMap');
   if(mapEl) mapEl.classList.remove('replaying');
-  if(rp.layer && leafletMap){ leafletMap.removeLayer(rp.layer); rp.layer = null; }
-  const panel = document.getElementById('rpPanel'); if(panel) panel.hidden = true;
-  if(rp.running && leafletMap) refocusLeafletMap();
-  rp.running = false; rp.finished = false;
+  document.body.classList.remove('nv-open');
+  if(st){
+    if(leafletMap){ leafletMap.stop(); if(st.group) leafletMap.removeLayer(st.group); }
+    const ui = document.getElementById('nvPanel'); if(ui) ui.remove();
+    st.stage.classList.remove('nv-stage');
+    if(st.home && st.home.parent) st.home.parent.insertBefore(st.stage, st.home.next);
+    if(leafletMap){ leafletMap.invalidateSize(); }
+    window.scrollTo({ top: st.scrollY, behavior: 'instant' });
+    if(rp.running && leafletMap) setTimeout(refocusLeafletMap, 60);
+  }
+  rp.running = false;
   rpUpdateButton();
 }
 (function wireReplay(){
   const b = document.getElementById('rpBtn'); if(!b) return;
   b.addEventListener('click', rpRun);
-  document.getElementById('rpPause').addEventListener('click', e => {
-    if(rp.finished){ rpEnd(); return; }
-    rp.paused = !rp.paused; e.target.textContent = rp.paused ? 'Resume' : 'Pause';
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'Escape' || !rp.running) return;
+    if(document.getElementById('loModalBackdrop').classList.contains('open')) return;   // Esc closes the details window first
+    rpEnd();
   });
-  document.getElementById('rpStop').addEventListener('click', rpEnd);
-  document.querySelectorAll('#rpSpeed button').forEach(x => x.addEventListener('click', () => {
-    rp.speed = parseFloat(x.getAttribute('data-s'));
-    document.querySelectorAll('#rpSpeed button').forEach(y => y.setAttribute('aria-pressed', y === x));
-  }));
-  document.addEventListener('keydown', e => { if(e.key === 'Escape' && rp.running) rpEnd(); });
   rpUpdateButton();
 })();
 
