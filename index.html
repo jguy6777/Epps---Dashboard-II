@@ -1433,6 +1433,14 @@
     font:600 12px 'JetBrains Mono',monospace; color:#0b0f17; background:#ffff73; border:2px solid #fff;
     box-shadow: 0 2px 8px rgba(0,0,0,.45); transition: transform .15s; }
   .nv-pin.active span, .nv-pin:hover span{ transform: scale(1.25); background:#fff; }
+  .nv-mode{ display:flex; gap:3px; margin-top:12px; padding:3px; border-radius:10px; background: var(--panel-elev); border:1px solid var(--border); }
+  .nv-mode button{ all:unset; flex:1; text-align:center; cursor:pointer; font:600 12px 'Inter',sans-serif; color: var(--text-mid);
+    padding:6px 8px; border-radius:7px; }
+  .nv-mode button:hover{ color: var(--text-hi); }
+  .nv-mode button[aria-selected="true"]{ background: var(--blue-soft); color: var(--on-soft); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .nv-newtag{ display:inline-block; font:700 9.5px 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase;
+    color:#0b0f1a; background:#ffff73; padding:2px 7px; border-radius:999px; }
+  .nv-pin-new span{ box-shadow: 0 0 0 3px rgba(255,255,115,.55), 0 2px 8px rgba(0,0,0,.45); }
   @media (max-width: 700px){ .nv-panel{ top:auto; left:10px; right:10px; bottom:10px; width:auto; max-height:45vh; } }
 </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -5139,16 +5147,37 @@ function nvFly(bounds, maxZoom){
   if(NV_REDUCED) leafletMap.fitBounds(bounds, o); else leafletMap.flyToBounds(bounds, Object.assign(o, { duration: 0.9 }));
 }
 
+/* All landowners acquired as of the selected report week, each with the week they first show as Acquired
+   in the weekly snapshots (or "by <first snapshot>" when they were already acquired then). */
+function rpAllAcquired(pair){
+  const weeks = history.map(h => h.date).filter(d => landownerSnapshots[d]);
+  const upto = weeks.slice(0, weeks.indexOf(pair.cur) + 1);
+  const firstAcq = new Map();
+  upto.forEach(w => landownerSnapshots[w].forEach(o => {
+    const k = o.aid ?? o.name;
+    if(o.status === 'ACQUIRED' && !firstAcq.has(k)) firstAcq.set(k, w);
+  }));
+  const isLatest = currentWeekIdx === history.length - 1;
+  return landownerSnapshots[pair.cur].filter(o => o.status === 'ACQUIRED').map(o => {
+    const det = landownerDetails[o.name];
+    let tracts = det && det.tracts ? det.tracts : [];
+    if(isLatest){ const acq = tracts.filter(t => t.status === 'ACQUIRED'); if(acq.length) tracts = acq; }
+    const w = firstAcq.get(o.aid ?? o.name);
+    return { name:o.name, acres:o.acres || 0, broker:o.assigned, tracts,
+             week: w, isNew: w === pair.cur, early: w === upto[0] && upto.length > 1 };
+  }).filter(o => o.tracts.length).sort((a,b) => b.acres - a.acres);
+}
+
 async function rpRun(){
   const pair = rpWeekPair(); if(!pair || rp.running) return;
   if(!leafletMap || !leafletParcelLayer){ setLeafletStatus('The map is still loading — try again in a moment.'); return; }
-  const owners = rpNewlyAcquired(pair); if(!owners.length) return;
+  if(!rpNewlyAcquired(pair).length) return;
   if(typeof clearTractSelection === 'function') clearTractSelection();
   if(typeof setPrintPickMode === 'function') setPrintPickMode(false);
 
   const mapEl = document.getElementById('leafletMap');
   const stage = mapEl.parentElement;
-  const st = rp.view = { owners, pair, selected: null, layers: new Map(), pins: [], stage, scrollY: window.scrollY };
+  const st = rp.view = { pair, mode: 'new', owners: [], selected: null, layers: new Map(), pins: [], stage, scrollY: window.scrollY, req: 0 };
   // Lift the map out of its card while full screen (the card's effects would otherwise trap position:fixed)
   st.home = { parent: stage.parentNode, next: stage.nextSibling };
   document.body.appendChild(stage);
@@ -5159,30 +5188,21 @@ async function rpRun(){
   document.body.appendChild(modal);
   rp.running = true; rpUpdateButton();
 
-  // ---- side panel ----
-  const ids = [...new Set(owners.flatMap(o => o.tracts.map(t => String(t.id))))];
-  const acres = owners.reduce((a, o) => a + (o.acres || 0), 0);
   const ui = document.createElement('div');
   ui.className = 'nv-panel'; ui.id = 'nvPanel';
   ui.innerHTML = `
     <div class="nv-head">
-      <div class="nv-kicker">New for ${ovEsc(pair.cur)}</div>
-      <div class="nv-headline">${owners.length} landowner${owners.length===1?'':'s'} acquired · ${ovFmt(acres)} net ac</div>
-      <div class="nv-sub">${ids.length} tract${ids.length===1?'':'s'} · since ${ovEsc(pair.prev)}</div>
+      <div class="nv-kicker" id="nvKicker"></div>
+      <div class="nv-headline" id="nvHeadline"></div>
+      <div class="nv-sub" id="nvSub"></div>
       <button type="button" class="nv-close" id="nvClose" title="Close (Esc)">✕</button>
+      <div class="nv-mode" role="tablist">
+        <button type="button" role="tab" data-mode="new" aria-selected="true">New for ${ovEsc(pair.cur)}</button>
+        <button type="button" role="tab" data-mode="all" aria-selected="false">All acquired</button>
+      </div>
     </div>
     <button type="button" class="nv-all active" id="nvAll">Full project area</button>
-    <ul class="nv-list" id="nvList">${owners.map((o, i) => {
-      const meta = [`${o.tracts.length} tract${o.tracts.length===1?'':'s'}`, `${ovFmt(o.acres)} net ac`, o.broker ? ovTitle(o.broker) : ''].filter(Boolean).join(' · ');
-      return `<li class="nv-item" tabindex="0" data-i="${i}">
-        <span class="nv-num">${i + 1}</span>
-        <div>
-          <div class="nv-owner">${ovEsc(o.name)}</div>
-          <div class="nv-meta">${ovEsc(meta)}</div>
-          <div class="nv-change">${ovEsc(o.from === 'NEW' ? 'new landowner' : ovTitle(o.from).toLowerCase())} → acquired</div>
-          <button type="button" class="nv-notes" data-owner="${ovEsc(o.name)}" data-tract="${ovEsc(o.tracts[0] ? o.tracts[0].id : '')}">Landowner details</button>
-        </div>
-      </li>`; }).join('')}</ul>`;
+    <ul class="nv-list" id="nvList"></ul>`;
   L.DomEvent.disableClickPropagation(ui);
   L.DomEvent.disableScrollPropagation(ui);
   stage.appendChild(ui);
@@ -5194,23 +5214,67 @@ async function rpRun(){
 
   ui.querySelector('#nvClose').addEventListener('click', rpEnd);
   ui.querySelector('#nvAll').addEventListener('click', () => nvSelect(null));
-  ui.querySelectorAll('.nv-item').forEach(li => {
-    const i = +li.dataset.i;
-    li.addEventListener('click', () => nvSelect(i));
-    li.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); nvSelect(i); } });
-    li.addEventListener('mouseenter', () => nvStyle(i));
-    li.addEventListener('mouseleave', () => nvStyle(null));
+  ui.querySelectorAll('.nv-mode button').forEach(b => b.addEventListener('click', () => nvShow(b.dataset.mode)));
+  // list rows are re-rendered per mode, so their clicks are handled here once
+  const list = ui.querySelector('#nvList');
+  list.addEventListener('click', e => {
+    const det = e.target.closest('.nv-notes');
+    if(det){ e.stopPropagation(); openLandownerModal(det.getAttribute('data-owner'), det.getAttribute('data-tract')); return; }
+    const li = e.target.closest('.nv-item'); if(li) nvSelect(+li.dataset.i);
   });
-  ui.querySelectorAll('.nv-notes').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation(); openLandownerModal(b.getAttribute('data-owner'), b.getAttribute('data-tract'));
-  }));
+  list.addEventListener('keydown', e => {
+    const li = e.target.closest('.nv-item');
+    if(li && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); nvSelect(+li.dataset.i); }
+  });
+  list.addEventListener('mouseover', e => { const li = e.target.closest('.nv-item'); nvStyle(li ? +li.dataset.i : null); });
+  list.addEventListener('mouseleave', () => nvStyle(null));
 
-  // ---- the new tracts on the map ----
-  const fc = await rpQuery(ids);
-  if(rp.view !== st) return;                          // closed while loading
-  const feats = new Map(); (fc && fc.features || []).forEach(f => feats.set(String(f.properties[ARCGIS_TRACT_FIELD]), f));
   if(!leafletMap.getPane('replayPane')){ leafletMap.createPane('replayPane'); leafletMap.getPane('replayPane').style.zIndex = 450; }
   st.group = L.featureGroup().addTo(leafletMap);
+  await nvShow('new');
+  nvFlyFull();
+  setTimeout(() => { const c = document.getElementById('nvClose'); if(c) c.focus({ preventScroll: true }); }, 50);
+}
+
+/* Fills the panel and the map for one mode: 'new' = acquired this week, 'all' = every acquired landowner */
+async function nvShow(mode){
+  const st = rp.view; if(!st) return;
+  const req = ++st.req;
+  st.mode = mode; st.selected = null;
+  const pair = st.pair;
+  const owners = st.owners = mode === 'all' ? rpAllAcquired(pair) : rpNewlyAcquired(pair);
+  const ui = document.getElementById('nvPanel');
+  ui.querySelectorAll('.nv-mode button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+  ui.querySelector('#nvAll').classList.add('active');
+
+  const ids = [...new Set(owners.flatMap(o => o.tracts.map(t => String(t.id))))];
+  const acres = owners.reduce((a, o) => a + (o.acres || 0), 0);
+  ui.querySelector('#nvKicker').textContent = mode === 'all' ? `Acquired as of ${pair.cur}` : `New for ${pair.cur}`;
+  ui.querySelector('#nvHeadline').textContent = `${owners.length} landowner${owners.length===1?'':'s'} acquired · ${ovFmt(acres)} net ac`;
+  ui.querySelector('#nvSub').textContent = mode === 'all'
+    ? `${ids.length} tract${ids.length===1?'':'s'} · ${owners.filter(o => o.isNew).length} new this week`
+    : `${ids.length} tract${ids.length===1?'':'s'} · since ${pair.prev}`;
+  ui.querySelector('#nvList').innerHTML = owners.map((o, i) => {
+    const meta = [`${o.tracts.length} tract${o.tracts.length===1?'':'s'}`, `${ovFmt(o.acres)} net ac`, o.broker ? ovTitle(o.broker) : ''].filter(Boolean).join(' · ');
+    const change = mode === 'all'
+      ? (o.isNew ? '<span class="nv-newtag">New this week</span>' : ovEsc(o.week ? (o.early ? `acquired by ${o.week}` : `acquired week of ${o.week}`) : 'acquired'))
+      : ovEsc(`${o.from === 'NEW' ? 'new landowner' : ovTitle(o.from).toLowerCase()} → acquired`);
+    return `<li class="nv-item" tabindex="0" data-i="${i}">
+      <span class="nv-num">${i + 1}</span>
+      <div>
+        <div class="nv-owner">${ovEsc(o.name)}</div>
+        <div class="nv-meta">${ovEsc(meta)}</div>
+        <div class="nv-change">${change}</div>
+        <button type="button" class="nv-notes" data-owner="${ovEsc(o.name)}" data-tract="${ovEsc(o.tracts[0] ? o.tracts[0].id : '')}">Landowner details</button>
+      </div>
+    </li>`; }).join('');
+  ui.querySelector('#nvList').scrollTop = 0;
+
+  // ---- tracts on the map ----
+  st.group.clearLayers(); st.layers = new Map(); st.pins = [];
+  const fc = ids.length ? await rpQuery(ids) : null;
+  if(rp.view !== st || req !== st.req) return;          // closed or switched while loading
+  const feats = new Map(); (fc && fc.features || []).forEach(f => feats.set(String(f.properties[ARCGIS_TRACT_FIELD]), f));
   owners.forEach((o, i) => {
     const shapes = o.tracts.map(t => feats.get(String(t.id))).filter(Boolean);
     if(!shapes.length) return;
@@ -5219,7 +5283,7 @@ async function rpRun(){
     st.layers.set(i, g);
     shapes.forEach(f => {
       const pin = L.marker(L.geoJSON(f).getBounds().getCenter(), {
-        icon: L.divIcon({ className: 'nv-pin', html: `<span>${i + 1}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
+        icon: L.divIcon({ className: 'nv-pin' + (mode === 'all' && o.isNew ? ' nv-pin-new' : ''), html: `<span>${i + 1}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
         keyboard: false, riseOnHover: true, pane: 'markerPane'
       }).addTo(st.group);
       pin.on('click', e => { L.DomEvent.stop(e); nvSelect(i, true); });
@@ -5227,8 +5291,7 @@ async function rpRun(){
     });
   });
   nvStyle(null);
-  nvFlyFull();
-  setTimeout(() => { const c = document.getElementById('nvClose'); if(c) c.focus({ preventScroll: true }); }, 50);
+  if(mode === 'all' || st.req > 1) nvFlyFull();
 }
 
 function nvStyle(hover){
@@ -5285,11 +5348,13 @@ function rpEnd(){
 (function wireReplay(){
   const b = document.getElementById('rpBtn'); if(!b) return;
   b.addEventListener('click', rpRun);
+  // capture phase, so this sees the details window still open before its own Esc handler closes it
   document.addEventListener('keydown', e => {
     if(e.key !== 'Escape' || !rp.running) return;
     if(document.getElementById('loModalBackdrop').classList.contains('open')) return;   // Esc closes the details window first
+    if(e.target && e.target.closest && e.target.closest('.pr-search')) return;
     rpEnd();
-  });
+  }, true);
   rpUpdateButton();
 })();
 
