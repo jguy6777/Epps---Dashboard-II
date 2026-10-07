@@ -3898,7 +3898,7 @@ function printExtent(aspect){
       if(err || !b || !b.isValid()) return reject(new Error('Could not find the selected tracts on the map layer.'));
       const sw = L.Projection.SphericalMercator.project(b.getSouthWest());
       const ne = L.Projection.SphericalMercator.project(b.getNorthEast());
-      let w = Math.max(ne.x - sw.x, 300) * 1.2, h = Math.max(ne.y - sw.y, 300) * 1.2;
+      let w = Math.max(ne.x - sw.x, 400) * 1.6, h = Math.max(ne.y - sw.y, 400) * 1.6;   // padding around the tracts
       if(w / h < aspect) w = h * aspect; else h = w / aspect;
       const cx = (sw.x + ne.x) / 2, cy = (sw.y + ne.y) / 2;
       resolve({ extent: { xmin: cx - w/2, ymin: cy - h/2, xmax: cx + w/2, ymax: cy + h/2, spatialReference: { wkid: 102100 } },
@@ -4052,11 +4052,14 @@ async function createPrintPdf(){
         const chunk = list.slice(c * perCol, (c + 1) * perCol);
         if(!chunk.length) break;
         const x0 = M + c * (colW + colGap);
-        const wTract = Math.min(130, colW * 0.3), wInt = 52, wOwner = colW - wTract - wInt - 8;
+        const wTract = Math.min(130, colW * 0.28), wNum = 50, wOwner = colW - wTract - 3 * wNum - 8;
+        // number columns (right-aligned): Interest, Gross ac, Net ac
+        const numX = [x0 + colW - 2 * wNum, x0 + colW - wNum, x0 + colW];
+        const right = (txt, xr, yy, f, size, color) => pg.drawText(txt, { x: xr - f.widthOfTextAtSize(txt, size), y: yy, size, font: f, color });
         let y = top - 10;
         pg.drawText('TRACT', { x: x0, y, size: 7, font: bold, color: soft });
         pg.drawText('LANDOWNER', { x: x0 + wTract, y, size: 7, font: bold, color: soft });
-        pg.drawText('INTEREST', { x: x0 + colW - wInt, y, size: 7, font: bold, color: soft });
+        ['INTEREST', 'GROSS AC', 'NET AC'].forEach((h, k) => right(h, numX[k], y, bold, 7, soft));
         pg.drawLine({ start: { x: x0, y: y - 4 }, end: { x: x0 + colW, y: y - 4 }, thickness: 0.6, color: line });
         y -= 4;
         let prevTract = null;
@@ -4067,7 +4070,10 @@ async function createPrintPdf(){
           if(t !== prevTract) pg.drawText(fit(t, font, FS, wTract - 6), { x: x0, y, size: FS, font, color: ink });
           prevTract = t;
           pg.drawText(fit(r.landowner, font, FS, wOwner), { x: x0 + wTract, y, size: FS, font, color: ink });
-          if(r.interest != null) pg.drawText(`${(r.interest * 100).toFixed(2)}%`, { x: x0 + colW - wInt, y, size: FS, font, color: ink });
+          const num = (v) => (v == null || isNaN(v)) ? '' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          if(r.interest != null) right(`${(r.interest * 100).toFixed(2)}%`, numX[0], y, font, FS, ink);
+          right(num(r.gross), numX[1], y, font, FS, ink);
+          right(num(r.acres), numX[2], y, font, FS, ink);
         });
       }
     };
