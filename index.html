@@ -2301,6 +2301,9 @@ let leafletZoomedToTract = false; // true when the map moved because a list row 
 
 // totalCurr/totalPrev/totalLoCurr/totalLoPrev are now computed in recomputeData() above
 
+/* Built-in status colours. Once the live map loads, applyGisStatusColors() replaces any of these with the
+   colours from the GIS layer's own symbology, so the dashboard always matches the web map. These are the
+   fallback when the layer can't be reached or doesn't define a colour for a status. */
 const STATUS_COLORS = {
   'ACQUIRED':    '#ffff73',
   'SURVEY REQUESTED': '#ff73df',
@@ -3782,6 +3785,7 @@ async function initLeafletMap(){
     // Clear the "Loading…" message once parcel data arrives. ('load' alone isn't reliable —
     // esri-leaflet doesn't fire it after the status filter is applied, so listen for each
     // successful data request too.)
+    applyGisStatusColors();
     leafletParcelLayer.on('load requestsuccess', () => {
       const el = document.getElementById('leafletMapStatus');
       if(el && el.textContent.startsWith('Loading')) setLeafletStatus('');
@@ -3835,6 +3839,45 @@ function updateLeafletMapFilter(){
   if(!leafletParcelLayer) return;
   leafletParcelLayer.setWhere(currentLeafletWhere());
   if(!leafletSelectedTract) refocusLeafletMap();
+}
+
+/* Reads the parcel layer's symbology (a unique-value renderer on the status field) and uses its colours for
+   every status it defines — map, legend, charts, chips and tables — then redraws whatever is on screen.
+   Statuses the layer doesn't symbolise keep their built-in colour. */
+function gisColorHex(c){
+  if(!Array.isArray(c) || c.length < 3) return null;
+  return '#' + c.slice(0,3).map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2,'0')).join('');
+}
+function applyGisStatusColors(){
+  if(!leafletParcelLayer || typeof leafletParcelLayer.metadata !== 'function') return;
+  leafletParcelLayer.metadata((err, md) => {
+    const r = md && md.drawingInfo && md.drawingInfo.renderer;
+    if(err || !r || r.type !== 'uniqueValue' || !Array.isArray(r.uniqueValueInfos)){
+      if(err) console.warn('[EPPS] Could not read map symbology; using built-in status colours.', err);
+      return;
+    }
+    if(r.field1 && String(r.field1).toLowerCase() !== String(ARCGIS_STATUS_FIELD).toLowerCase()){
+      console.warn(`[EPPS] Map symbology is on ${r.field1}, not ${ARCGIS_STATUS_FIELD}; using built-in status colours.`);
+      return;
+    }
+    const changed = [];
+    r.uniqueValueInfos.forEach(u => {
+      const hex = gisColorHex(u.symbol && u.symbol.color);
+      const key = String(u.value == null ? '' : u.value).trim().toUpperCase();
+      if(!hex || !key) return;
+      if(STATUS_COLORS[key] !== hex){ changed.push(`${key} ${STATUS_COLORS[key] || '(new)'} → ${hex}`); STATUS_COLORS[key] = hex; }
+    });
+    if(!changed.length) return;
+    console.info('[EPPS] Status colours taken from the map symbology:', changed.join('; '));
+    const safe = (fn) => { try { fn(); } catch(e){ console.warn('[EPPS] redraw after colour update:', e); } };
+    safe(() => leafletParcelLayer.resetStyle());
+    safe(renderMapLegend);
+    safe(renderAll);
+    safe(() => { renderLineListPills(); renderLineListTable(); });
+    safe(() => { renderIolPills(); renderIolTable(); });
+    safe(() => { if(typeof renderLineListExplorer === 'function') renderLineListExplorer(); });
+    document.dispatchEvent(new Event('epps:statuscolors'));
+  });
 }
 
 /* Zooms the map to fit every parcel matching the current status filter
@@ -5547,6 +5590,7 @@ initLeafletMap();
   cSel.addEventListener('change',()=>{ fCounsel=cSel.value; render(); });
   document.getElementById('naClear').addEventListener('click',()=>{
     fStatus='ALL'; fAgent='ALL'; fRep='all'; fCounsel='all'; stSel.value='ALL'; agSel.value='ALL'; cSel.value='all'; cSel.hidden=true; pressRep('all'); render(); });
+  document.addEventListener('epps:statuscolors', render);
   render();
 })();
 </script>
