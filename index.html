@@ -1029,7 +1029,7 @@
   .tp-owner-meta{ color: var(--text-lo, #8a96ad); font-size:11px; }
   .tp-chip{ display:inline-block; padding:1px 6px; border-radius:4px; color:#0b0f1a; font-size:10px; font-weight:600; }
   .tp-note{ background: var(--faint-2); border-radius:6px; padding:6px 8px; margin-top:4px; }
-  .tp-scroll{ overscroll-behavior: contain; max-height: min(460px, 60vh); overflow-y:auto; padding-right:4px; }
+  .tp-scroll{ overscroll-behavior: contain; max-height: var(--tp-max, min(460px, 60vh)); overflow-y:auto; padding-right:4px; }
   .map-legend{
     background: var(--overlay-bg); color: var(--text-hi, #e8edf7);
     border:1px solid var(--border, #26324a); border-radius:8px; padding:10px 12px;
@@ -1441,6 +1441,14 @@
   .nv-newtag{ display:inline-block; font:700 9.5px 'Inter',sans-serif; letter-spacing:.08em; text-transform:uppercase;
     color:#0b0f1a; background:#ffff73; padding:2px 7px; border-radius:999px; }
   .nv-pin-new span{ box-shadow: 0 0 0 3px rgba(255,255,115,.55), 0 2px 8px rgba(0,0,0,.45); }
+  /* Several landowners on the same tract share one pin: "1 · 2" */
+  .nv-pin.nv-pin-multi span{ width:auto; min-width:26px; padding:0 8px; border-radius:13px; box-sizing:border-box; white-space:nowrap; }
+  .nv-pin-multi i{ font-style:normal; opacity:.55; margin:0 3px; }
+  /* Selected tract (Overview map): other parcels fade back, the selection sits on its own top layer */
+  #leafletMap.tract-selected .leaflet-overlay-pane{ opacity:.45; }
+  .sel-tract-line{ animation: selPulse 1.6s ease-in-out infinite; }
+  @keyframes selPulse{ 0%,100%{ stroke-opacity:1; } 50%{ stroke-opacity:.45; } }
+  @media (prefers-reduced-motion: reduce){ .sel-tract-line{ animation:none; } }
   @media (max-width: 700px){ .nv-panel{ top:auto; left:10px; right:10px; bottom:10px; width:auto; max-height:45vh; } }
 </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -2280,6 +2288,7 @@ let leafletParcelLayer = null;
 let leafletTokenRefreshTimer = null;
 const ARCGIS_TRACT_FIELD = 'Tract_ID'; // tract ID field on the ArcGIS layer — matches the dashboard's tract IDs
 let leafletHighlight = null;      // outline drawn around the selected tract
+let leafletOwnerHighlight = null; // outlines drawn around every tract of a landowner picked in the map search
 let leafletBoundaryLayer = null;  // red project boundary (AOI) outline
 let leafletSectionsLayer = null;  // section lines + section numbers (layer 4)
 let leafletTownshipsLayer = null; // township lines + township-range labels (layer 5)
@@ -4333,6 +4342,47 @@ function removeTractHighlight(){
     leafletSuppressPopupClose = false;
     leafletHighlight = null;
   }
+  removeOwnerHighlight();
+  syncTractSelectedClass();
+}
+function removeOwnerHighlight(){
+  if(leafletOwnerHighlight){ leafletMap.removeLayer(leafletOwnerHighlight); leafletOwnerHighlight = null; }
+}
+function syncTractSelectedClass(){
+  const el = document.getElementById('leafletMap');
+  if(el) el.classList.toggle('tract-selected', !!(leafletHighlight || leafletOwnerHighlight));
+}
+/* The selection is drawn in its own pane above the parcels, section grid and project boundary,
+   so parcels that load later can't cover it: a dark halo, then the tract at full colour with a
+   pulsing cyan outline. Other parcels fade back (CSS: #leafletMap.tract-selected). */
+function selPane(){
+  if(!leafletMap.getPane('selPane')){
+    leafletMap.createPane('selPane');
+    leafletMap.getPane('selPane').style.zIndex = 460;
+    leafletMap.getPane('selPane').style.pointerEvents = 'none';
+  }
+  return 'selPane';
+}
+function drawSelection(fc){
+  const pane = selPane();
+  const grp = L.featureGroup();
+  L.geoJSON(fc, { pane, interactive:false, style: { color:'#0b0f17', weight:9, opacity:.8, fill:false } }).addTo(grp);
+  L.geoJSON(fc, { pane, interactive:false, style: (f) => ({ color:'#00e5ff', weight:4, opacity:1, className:'sel-tract-line',
+    fillColor: statusColor(f.properties && f.properties[ARCGIS_STATUS_FIELD]) || '#888', fillOpacity:.85 }) }).addTo(grp);
+  return grp;
+}
+/* Outlines every tract of a landowner (map search → landowner with several tracts). */
+function highlightOwnerTracts(ids){
+  if(!leafletMap || !leafletParcelLayer || !ids || !ids.length) return;
+  removeOwnerHighlight();
+  const list = ids.map(t => `'${String(t).replace(/'/g,"''")}'`).join(',');
+  const token = (highlightOwnerTracts.req = (highlightOwnerTracts.req || 0) + 1);
+  leafletParcelLayer.query().where(`${ARCGIS_TRACT_FIELD} IN (${list})`).run((err, fc) => {
+    if(token !== highlightOwnerTracts.req || err || !fc || !fc.features || !fc.features.length) return;
+    removeOwnerHighlight();
+    leafletOwnerHighlight = drawSelection(fc).addTo(leafletMap);
+    syncTractSelectedClass();
+  });
 }
 
 /* Selects a tract: outlines it, opens its info popup, highlights its row(s) in the list.
@@ -4359,10 +4409,8 @@ function selectTractOnMap(tractId, opts){
       return;
     }
     const props = fc.features[0].properties || {};
-    leafletHighlight = L.geoJSON(fc, {
-      style: { color: '#00e5ff', weight: 3.5, fillColor: statusColor(props[ARCGIS_STATUS_FIELD]) || '#888', fillOpacity: 0.35 },
-      interactive: false,
-    }).addTo(leafletMap);
+    leafletHighlight = drawSelection(fc).addTo(leafletMap);
+    syncTractSelectedClass();
 
     const bounds = leafletHighlight.getBounds();
     const hl = leafletHighlight;
@@ -4371,10 +4419,22 @@ function selectTractOnMap(tractId, opts){
     hl.bindPopup(popup);
     hl.on('popupclose', () => { if(!leafletSuppressPopupClose) clearTractSelection(); });
     // Open the popup once the map has finished moving, so it isn't clipped mid-zoom
-    const openIt = () => { if(leafletHighlight === hl) hl.openPopup(opts.latlng || bounds.getCenter()); };
+    // The card opens from the tract's top edge (so it sits above the tract, not over it) and is
+    // shortened to the room left above the tract, so the outlined tract stays in view below it.
+    const anchor = bounds.isValid() ? L.latLng(bounds.getNorth(), (opts.latlng || bounds.getCenter()).lng) : opts.latlng;
+    const openIt = () => {
+      if(leafletHighlight !== hl) return;
+      const room = leafletMap.latLngToContainerPoint(anchor).y - 70;   // popup tip + card padding
+      hl.openPopup(anchor);
+      // set on the card's container (update() re-renders the content, which would drop an inline style)
+      const el = popup.getElement && popup.getElement();
+      if(el){ el.style.setProperty('--tp-max', Math.max(150, Math.min(460, room)) + 'px'); popup.update(); }
+    };
     if(opts.zoom && bounds.isValid()){
       leafletMap.once('moveend', openIt);
-      leafletMap.fitBounds(bounds, { padding: [60,60], maxZoom: 16 });
+      // Leave the top half of the map free for the card
+      const h = leafletMap.getSize().y;
+      leafletMap.fitBounds(bounds, { paddingTopLeft: [40, Math.round(h * 0.5)], paddingBottomRight: [40, 24], maxZoom: 16 });
     } else {
       openIt();
     }
@@ -4383,7 +4443,10 @@ function selectTractOnMap(tractId, opts){
 
 /* Deselects the tract and zooms the map back out to the filtered extent. */
 function clearTractSelection(){
-  if(!leafletSelectedTract) return;
+  if(!leafletSelectedTract){
+    if(leafletOwnerHighlight){ removeOwnerHighlight(); syncTractSelectedClass(); }
+    return;
+  }
   leafletSelectedTract = null;
   leafletZoomedToTract = false;
   removeTractHighlight();
@@ -4717,6 +4780,7 @@ function ovZoomToTracts(ids){
       if(ids.length === 1){ close(); selectTractOnMap(ids[0], { zoom:true, owner:name }); return; }
       if(typeof clearTractSelection === 'function') clearTractSelection();
       ovZoomToTracts(ids);
+      highlightOwnerTracts(ids);
       showOwner(name);
       return;
     }
@@ -4725,7 +4789,7 @@ function ovZoomToTracts(ids){
     close();
     selectTractOnMap(tid, { zoom:true, owner: b.getAttribute('data-owner') });
   }
-  input.addEventListener('input', search);
+  input.addEventListener('input', () => { if(!input.value.trim() && leafletOwnerHighlight){ removeOwnerHighlight(); syncTractSelectedClass(); } search(); });
   input.addEventListener('focus', () => { if(ownerMode) showOwner(ownerMode); else if(input.value.trim().length >= 2) search(); });
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('keydown', (e) => {
@@ -5275,21 +5339,36 @@ async function nvShow(mode){
   const fc = ids.length ? await rpQuery(ids) : null;
   if(rp.view !== st || req !== st.req) return;          // closed or switched while loading
   const feats = new Map(); (fc && fc.features || []).forEach(f => feats.set(String(f.properties[ARCGIS_TRACT_FIELD]), f));
+  // One pin per tract: landowners who share a tract (co-owners) share a single pin, e.g. "1 · 2"
+  const pinOwners = new Map();   // tract id -> { f, owners:[i...] }
   owners.forEach((o, i) => {
     const shapes = o.tracts.map(t => feats.get(String(t.id))).filter(Boolean);
     if(!shapes.length) return;
     const g = L.geoJSON({ type:'FeatureCollection', features: shapes }, { pane:'replayPane' }).addTo(st.group);
-    g.on('click', e => { L.DomEvent.stop(e); nvSelect(i, true); });
+    g.on('click', e => { L.DomEvent.stop(e); nvSelect(nvNextOwner(nvOwnersOf(e.layer, i), st.selected), true); });
     st.layers.set(i, g);
     shapes.forEach(f => {
-      const pin = L.marker(L.geoJSON(f).getBounds().getCenter(), {
-        icon: L.divIcon({ className: 'nv-pin' + (mode === 'all' && o.isNew ? ' nv-pin-new' : ''), html: `<span>${i + 1}</span>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
-        keyboard: false, riseOnHover: true, pane: 'markerPane'
-      }).addTo(st.group);
-      pin.on('click', e => { L.DomEvent.stop(e); nvSelect(i, true); });
-      pin._nv = i; st.pins.push(pin);
+      const id = String(f.properties[ARCGIS_TRACT_FIELD]);
+      if(!pinOwners.has(id)) pinOwners.set(id, { f, owners: [] });
+      const po = pinOwners.get(id); if(!po.owners.includes(i)) po.owners.push(i);
     });
   });
+  pinOwners.forEach(({ f, owners: ix }) => {
+    ix.sort((a,b) => a - b);
+    const multi = ix.length > 1;
+    const isNew = mode === 'all' && ix.some(i => owners[i].isNew);
+    const label = ix.map(i => i + 1).join('<i>·</i>');
+    const w = multi ? 18 + 14 * ix.length + 10 * (ix.length - 1) : 26;
+    const pin = L.marker(L.geoJSON(f).getBounds().getCenter(), {
+      icon: L.divIcon({ className: 'nv-pin' + (multi ? ' nv-pin-multi' : '') + (isNew ? ' nv-pin-new' : ''), html: `<span>${label}</span>`, iconSize: [w, 26], iconAnchor: [w / 2, 13] }),
+      keyboard: false, riseOnHover: true, pane: 'markerPane',
+      title: ix.map(i => `${i + 1}. ${owners[i].name}`).join('\n')
+    }).addTo(st.group);
+    // Clicking a shared pin steps through its landowners (1, then 2, …)
+    pin.on('click', e => { L.DomEvent.stop(e); nvSelect(nvNextOwner(ix, st.selected), true); });
+    pin._nv = ix; st.pins.push(pin);
+  });
+  st.tractOwners = pinOwners;
   nvStyle(null);
   if(mode === 'all' || st.req > 1) nvFlyFull();
 }
@@ -5303,7 +5382,19 @@ function nvStyle(hover){
     else g.setStyle({ color:yellow, weight:2.5, opacity:1, fillColor:yellow, fillOpacity: st.selected != null ? 0.3 : 0.55 });
   });
   const sel = st.layers.get(st.selected); if(sel) sel.bringToFront();
-  st.pins.forEach(p => { const el = p.getElement(); if(el) el.classList.toggle('active', p._nv === st.selected || p._nv === hover); });
+  st.pins.forEach(p => { const el = p.getElement(); if(el) el.classList.toggle('active', p._nv.includes(st.selected) || p._nv.includes(hover)); });
+}
+/* Owners of the clicked tract (co-owners share it); falls back to the owner whose layer was clicked */
+function nvOwnersOf(layer, fallback){
+  const st = rp.view;
+  const id = layer && layer.feature && layer.feature.properties ? String(layer.feature.properties[ARCGIS_TRACT_FIELD]) : null;
+  const po = st && st.tractOwners && id ? st.tractOwners.get(id) : null;
+  return po && po.owners.length ? po.owners : [fallback];
+}
+/* Next landowner in a shared group after the one currently selected (wraps around) */
+function nvNextOwner(group, current){
+  const k = group.indexOf(current);
+  return k < 0 ? group[0] : group[(k + 1) % group.length];
 }
 
 /* List clicks toggle; map clicks (pin or tract) always select */
