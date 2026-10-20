@@ -737,9 +737,9 @@ const transitions = [
 
 // ---- brokerage ----
 const brokerage = [
-  { name:'ETP - Epps Title', prev:67767.44, curr:1452, total:69219.44, budget:62000, color:'var(--series-1)' },
-  { name:'ETP - Epps GIS', prev:55956.7, curr:1655, total:57611.7, budget:50000, color:'var(--series-2)' },
-  { name:'ETP - Epps Leasing', prev:117000.64, curr:11474.38, total:128475.02, budget:455000, color:'var(--series-3)' },
+  { name:'ETP - Epps Title', prev:69219.44, curr:0, total:69219.44, budget:62000, color:'var(--series-1)' },
+  { name:'ETP - Epps GIS', prev:57611.7, curr:725, total:58336.7, budget:50000, color:'var(--series-2)' },
+  { name:'ETP - Epps Leasing', prev:128475.02, curr:8699.34, total:137174.36, budget:455000, color:'var(--series-3)' },
 ];
 
 // ---- bonus ----
