@@ -769,6 +769,7 @@
   /* KPI tiles */
   .ov-kpis{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:14px; }
   .ov-kpi{ flex-direction:row; align-items:center; gap:12px; padding:14px 16px; }
+  @supports (container-type:inline-size){ .ov-kpi{ gap:clamp(8px, 4cqi, 12px); } }
   .ov-kpi .ic{ width:44px; height:44px; border-radius:12px; display:grid; place-items:center; flex:none;
     color: var(--blue); background: color-mix(in srgb, var(--blue) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blue) 32%, transparent); }
   .ov-kpi .ic svg{ width:22px; height:22px; }
@@ -777,6 +778,15 @@
   .ov-kpi .v small{ font-size:13px; font-weight:500; color: var(--text-lo); margin-left:3px; }
   .ov-kpi .d{ font-size:11.5px; color: var(--up); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ov-kpi .d.mute{ color: var(--text-lo); }
+  /* KPI tiles: keep numbers inside the card at any width — value shrinks with the tile, sub-line wraps instead of truncating */
+  .ov-kpi > div:last-child{ flex:1 1 auto; min-width:0; container-type:inline-size; }
+  .ov-kpi .v{ font-size:clamp(15px, 15.5cqi, 25px); white-space:nowrap; }
+  .ov-kpi .d{ white-space:normal; overflow:visible; text-overflow:clip; line-height:1.3; }
+  .ov-kpis > .ov-kpi{ container-type:inline-size; }
+  @container (max-width: 215px){
+    .ov-kpi .ic{ width:32px; height:32px; border-radius:9px; }
+    .ov-kpi .ic svg{ width:17px; height:17px; }
+  }
 
   /* map card */
   .ov-mapcard{ padding:0; overflow:hidden; flex:1; }
