@@ -2214,7 +2214,7 @@
     </div>
   </div>
 
-  <footer>Source: EPPS Mapper Export — Raw Data tabs, Sep 23, 2026 &amp; Sep 30, 2026 · status = MAIL_STATUS · acres = NET_AC · landowner = LAND_OWNER / ASSOCIATEID · county = TRACT_COUNTY</footer>
+  <footer>Source: EPPS Mapper Export — Raw Data tabs, <span id="footerWeeks">the last two weekly updates</span> · status = MAIL_STATUS · acres = NET_AC · landowner = LAND_OWNER / ASSOCIATEID · county = TRACT_COUNTY</footer>
 
 
 
@@ -2240,6 +2240,7 @@
   var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var cy=+yr, py=M.indexOf(prev.slice(0,3))>M.indexOf(cur.slice(0,3)) ? cy-1 : cy;
   el.textContent='Comparing '+prev+', '+py+' and '+cur+', '+cy;
+  var fw=document.getElementById('footerWeeks'); if(fw) fw.textContent=prev+', '+py+' & '+cur+', '+cy;
 })();
 
 
