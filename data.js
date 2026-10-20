@@ -744,7 +744,7 @@ const brokerage = [
 
 // ---- bonus ----
 const bonus = [
-  { name:'ETP - Epps Acreage', prev:699254.71, curr:179025, total:878279.71, color:'var(--series-1)' },
+  { name:'ETP - Epps Acreage', prev:878279.71, curr:0, total:878279.71, color:'var(--series-1)' },
   { name:'ETP - Epps Infrastructure', prev:96163.15, curr:0, total:96163.15, color:'var(--series-2)' },
 ];
 
