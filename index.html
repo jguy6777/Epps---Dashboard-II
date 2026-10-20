@@ -1503,7 +1503,7 @@
         <div class="title-row">
           <h1>EPPS Dashboard</h1>
         </div>
-        <div class="subtitle">Comparing Sep 23, 2026 and Sep 30, 2026</div>
+        <div class="subtitle" id="compareSubtitle">Comparing the last two weekly updates</div>
       </div>
     </div>
     <div class="head-date"><b id="headDate"></b></div>
@@ -2231,6 +2231,16 @@
 <script>
 // Last-updated stamp now comes from data.js
 (function(){ var el=document.getElementById('lastUpdatedText'); if(el && typeof EPPS_LAST_UPDATED!=='undefined') el.textContent='Last updated '+EPPS_LAST_UPDATED; })();
+// "Comparing X and Y" subtitle: built from the last two history weeks in data.js, so it updates itself each week.
+(function(){
+  var el=document.getElementById('compareSubtitle');
+  if(!el || typeof history==='undefined' || !Array.isArray(history) || history.length<2) return;
+  var yr=(typeof EPPS_LAST_UPDATED!=='undefined' && (String(EPPS_LAST_UPDATED).match(/(\d{4})/)||[])[1]) || String(new Date().getFullYear());
+  var cur=history[history.length-1].date, prev=history[history.length-2].date;
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var cy=+yr, py=M.indexOf(prev.slice(0,3))>M.indexOf(cur.slice(0,3)) ? cy-1 : cy;
+  el.textContent='Comparing '+prev+', '+py+' and '+cur+', '+cy;
+})();
 
 
 
