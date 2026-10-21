@@ -5605,7 +5605,13 @@ function tlBuild(){
     });
     return m;
   });
-  return { weeks, tractOwners, statusByWeek };
+  // opening frame: the whole prospect at Mailed, before the first weekly report
+  const base = new Map(); tractOwners.forEach((_, id) => base.set(id, 'MAILED'));
+  const hist = weeks.map(w => history.find(x => x.date === w) || {});
+  const h0 = hist[0];
+  hist.unshift({ date:'Start', totalLandowners: h0.totalLandowners, totalAcres: h0.totalAcres,
+                 landowners:{ MAILED: h0.totalLandowners }, acres:{ MAILED: h0.totalAcres } });
+  return { weeks: ['Start'].concat(weeks), tractOwners, statusByWeek: [base].concat(statusByWeek), hist };
 }
 
 function tlPadding(){
@@ -5723,7 +5729,7 @@ function tlMix(a, b, p){ const x = tlRgb(a), y = tlRgb(b);
   return '#' + x.map((c, k) => Math.round(c + (y[k] - c) * p).toString(16).padStart(2,'0')).join(''); }
 function tlCol(s){ return s ? statusColor(s) : TL_GREY; }
 function tlOpa(s){ return s ? 0.82 : 0.25; }
-function tlDate(label){ const d = new Date(`${label}, 2026`); return isNaN(d) ? null : d; }
+function tlDate(label){ if(!/^[A-Z][a-z]{2,8}\s+\d{1,2}$/.test(String(label))) return null; const d = new Date(`${label}, 2026`); return isNaN(d) ? null : d; }
 function tlFmtDate(d){ return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
 
 function tlFrame(t){
@@ -5753,21 +5759,22 @@ function tlFrame(t){
   const ui = document.getElementById('tlPanel'); if(!ui) return;
   const da = tlDate(weeks[k]), db = tlDate(weeks[k + 1]);
   const d = da && db ? new Date(da.getTime() + (db - da) * f) : null;
-  ui.querySelector('#tlWeek').textContent = atWeek >= 0 ? `Week of ${weeks[atWeek]}` : (d ? tlFmtDate(d) : weeks[st.i]);
-  ui.querySelector('#tlStep').textContent = atWeek >= 0 ? `Report ${atWeek + 1} of ${n}` : `${weeks[k]} → ${weeks[k + 1]}`;
+  ui.querySelector('#tlWeek').textContent = atWeek === 0 ? 'All tracts mailed' : atWeek > 0 ? `Week of ${weeks[atWeek]}` : (d ? tlFmtDate(d) : `Toward ${weeks[k + 1]}`);
+  ui.querySelector('#tlStep').textContent = atWeek === 0 ? 'Before first report' : atWeek > 0 ? `Report ${atWeek} of ${n - 1}` : `${weeks[k]} → ${weeks[k + 1]}`;
   let sub;
-  if(atWeek === 0) sub = `Starting point · ${st.layers.size} tracts on the map`;
+  const since = j => j === 0 ? 'the start' : weeks[j];
+  if(atWeek === 0) sub = `Starting point · all ${st.layers.size} tracts at Mailed`;
   else if(atWeek > 0){
     const pa = statusByWeek[atWeek - 1], pb = statusByWeek[atWeek]; let c = 0, na = 0;
     st.layers.forEach((_, id) => { if(pa.get(id) !== pb.get(id)){ c++; if(pb.get(id) === 'ACQUIRED') na++; } });
-    sub = c ? `${c} tract${c === 1 ? '' : 's'} changed status since ${weeks[atWeek - 1]}${na ? ` · ${na} newly acquired` : ''}`
-            : `No tract status changes since ${weeks[atWeek - 1]}`;
+    sub = c ? `${c} tract${c === 1 ? '' : 's'} changed status since ${since(atWeek - 1)}${na ? ` · ${na} newly acquired` : ''}`
+            : `No tract status changes since ${since(atWeek - 1)}`;
   } else sub = changed ? `${changed} tract${changed === 1 ? '' : 's'} changing before the ${weeks[k + 1]} report${newAcq ? ` · ${newAcq} to acquired` : ''}`
                        : `No tract changes before ${weeks[k + 1]}`;
   ui.querySelector('#tlSub').textContent = sub;
 
   // stats and status bar glide between the two reports
-  const ha = history.find(x => x.date === weeks[k]) || {}, hb = history.find(x => x.date === weeks[k + 1]) || {};
+  const ha = st.data.hist[k] || {}, hb = st.data.hist[k + 1] || {};
   const e = tlEase(f), lerp = (x, y) => (x || 0) + ((y || 0) - (x || 0)) * e;
   const la = ha.landowners || {}, lb = hb.landowners || {}, aa = ha.acres || {}, ab = hb.acres || {};
   ui.querySelector('#tlLo').textContent = `${Math.round(lerp(la.ACQUIRED, lb.ACQUIRED))} / ${Math.round(lerp(ha.totalLandowners, hb.totalLandowners))}`;
@@ -5777,11 +5784,13 @@ function tlFrame(t){
   const ac = {}; keys.forEach(x => ac[x] = lerp(aa[x], ab[x]));
   const total = Object.values(ac).reduce((s, v) => s + v, 0) || 1;
   const parts = order.filter(x => (ac[x] || 0) > 0.01);
-  if(st.barKeys !== parts.join('|')){
-    st.barKeys = parts.join('|');
+  const shown = atWeek >= 0 ? [...statusByWeek[atWeek].values()] : [...a.values(), ...b.values()];
+  const partial = shown.includes('PARTIALLY ACQUIRED');
+  if(st.barKeys !== parts.join('|') + partial){
+    st.barKeys = parts.join('|') + partial;
     ui.querySelector('#tlBar').innerHTML = parts.map(x => `<i data-s="${ovEsc(x)}" style="background:${statusColor(x)}"></i>`).join('');
     const legend = parts.slice();
-    if([...a.values(), ...b.values()].includes('PARTIALLY ACQUIRED')) legend.splice(1, 0, 'PARTIALLY ACQUIRED');
+    if(partial) legend.splice(1, 0, 'PARTIALLY ACQUIRED');
     ui.querySelector('#tlLegend').innerHTML = legend.map(x => `<span><i style="background:${statusColor(x)}"></i>${ovEsc(ovTitle(x))}</span>`).join('');
   }
   ui.querySelectorAll('#tlBar i').forEach(el => { const x = el.dataset.s;
