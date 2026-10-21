@@ -1468,8 +1468,6 @@
 
   /* ---- Weekly time-lapse: every tract recoloured week by week from the landowner snapshots ---- */
   #leafletMap.tl-on .leaflet-overlay-pane{ opacity:0 !important; }
-  .tl-pane path{ transition: fill .7s ease, fill-opacity .7s ease, stroke .7s ease; }
-  @media (prefers-reduced-motion: reduce){ .tl-pane path{ transition:none; } }
   .tl-panel{ left:16px; bottom:16px; width:380px; padding:14px 16px 13px; transform: translateY(16px); opacity:0;
     transition: transform .35s ease, opacity .35s ease; font-family:'Inter',sans-serif; }
   .tl-panel.in{ transform:none; opacity:1; }
@@ -1481,14 +1479,14 @@
   .tl-stat b{ display:block; font-family:'JetBrains Mono',monospace; font-size:19px; color: var(--text-hi); font-weight:600; }
   .tl-stat span{ font-size:11px; color: var(--text-lo); }
   .tl-bar{ display:flex; height:8px; border-radius:4px; overflow:hidden; margin-top:11px; background: var(--track); }
-  .tl-bar i{ display:block; height:100%; transition: width .7s ease; }
+  .tl-bar i{ display:block; height:100%; }
   .tl-legend{ display:flex; flex-wrap:wrap; gap:4px 11px; margin-top:8px; font-size:11px; color: var(--text-mid); }
   .tl-legend span{ display:inline-flex; align-items:center; gap:5px; }
   .tl-legend i{ width:10px; height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.35); }
   .tl-scrub{ position:relative; margin-top:13px; height:26px; }
   .tl-scrub input{ position:absolute; inset:0; width:100%; margin:0; opacity:0; cursor:pointer; z-index:2; }
   .tl-track{ position:absolute; left:6px; right:6px; top:12px; height:3px; border-radius:2px; background: var(--track); }
-  .tl-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:2px; background: var(--blue); transition: width .4s ease; }
+  .tl-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:2px; background: var(--blue); }
   .tl-dot{ position:absolute; top:-5px; width:13px; height:13px; margin-left:-6.5px; border-radius:50%; background: var(--track);
     border:2px solid var(--overlay-bg); box-sizing:border-box; transition: background .3s, transform .3s; }
   .tl-dot.past{ background: var(--blue); }
@@ -1499,9 +1497,6 @@
   .tl-panel .nv-close{ top:10px; right:10px; }
   .tl-ticks span.tl-skip{ visibility:hidden; }
   .tl-panel .rp-ctrl > button.tl-play{ background: var(--blue-soft); color: var(--on-soft); border-color: var(--blue); min-width:62px; text-align:center; }
-  .tl-pulse{ animation: tlPulse 1.4s ease-out 1; }
-  @keyframes tlPulse{ 0%{ stroke:#ffffff; stroke-width:9; stroke-opacity:1; } 100%{ stroke-width:1; stroke-opacity:.9; } }
-  @media (prefers-reduced-motion: reduce){ .tl-pulse{ animation:none; } }
   .tl-tip{ font-family:'Inter',sans-serif; font-size:12px; line-height:1.4; }
   .tl-tip b{ font-family:'JetBrains Mono',monospace; }
   @media (max-width: 700px){
@@ -5574,7 +5569,7 @@ function rpEnd(){
    ===================================================================== */
 var tl = { running:false };
 const TL_GREY = '#5c6b82';
-const TL_SPEEDS = { '1×': 1800, '2×': 900 };
+const TL_SPEEDS = { '1×': 4200, '2×': 2100 };   // ms per week of playback
 
 function tlBuild(){
   const weeks = history.map(h => h.date).filter(d => landownerSnapshots[d]);
@@ -5637,7 +5632,7 @@ async function tlRun(){
 
   const mapEl = document.getElementById('leafletMap');
   const stage = mapEl.parentElement;
-  const st = tl.view = { data, i: 0, timer: null, speed: '1×', layers: new Map(), stage, scrollY: window.scrollY };
+  const st = tl.view = { data, i: 0, t: 0, playing: false, raf: null, speed: '1×', layers: new Map(), stage, scrollY: window.scrollY };
   st.home = { parent: stage.parentNode, next: stage.nextSibling };
   document.body.appendChild(stage);
   tl.running = true; tlUpdateButton();
@@ -5659,7 +5654,7 @@ async function tlRun(){
     <div class="tl-scrub">
       <div class="tl-track"><div class="tl-fill" id="tlFill"></div>
         ${data.weeks.map((w, k) => `<span class="tl-dot" data-k="${k}" style="left:${n > 1 ? (k / (n - 1)) * 100 : 0}%"></span>`).join('')}</div>
-      <input type="range" id="tlRange" min="0" max="${n - 1}" step="1" value="0" aria-label="Report week">
+      <input type="range" id="tlRange" min="0" max="${n - 1}" step="any" value="0" aria-label="Report week">
     </div>
     <div class="tl-ticks">${data.weeks.map((w, k) => `<span${n > 8 && k % 2 && k !== n - 1 ? ' class="tl-skip"' : ''}>${ovEsc(w)}</span>`).join('')}</div>
     <div class="rp-ctrl">
@@ -5678,14 +5673,14 @@ async function tlRun(){
   requestAnimationFrame(() => ui.classList.add('in'));
 
   ui.querySelector('#tlClose').addEventListener('click', tlEnd);
-  ui.querySelector('#tlPlay').addEventListener('click', () => st.timer ? tlPause() : tlPlay());
-  ui.querySelector('#tlPrev').addEventListener('click', () => { tlPause(); tlRender(Math.max(0, st.i - 1), true); });
-  ui.querySelector('#tlNext').addEventListener('click', () => { tlPause(); tlRender(Math.min(n - 1, st.i + 1), true); });
-  ui.querySelector('#tlRange').addEventListener('input', e => { tlPause(); tlRender(+e.target.value, true); });
+  ui.querySelector('#tlPlay').addEventListener('click', () => st.playing ? tlPause() : tlPlay());
+  ui.querySelector('#tlPrev').addEventListener('click', () => tlGoTo(Math.ceil(st.t - 1e-6) - 1));
+  ui.querySelector('#tlNext').addEventListener('click', () => tlGoTo(Math.floor(st.t + 1e-6) + 1));
+  ui.querySelector('#tlRange').addEventListener('input', e => { tlPause(); tlFrame(+e.target.value); tlSetPlayLabel(); });
   ui.querySelectorAll('.rp-speed button').forEach(b => b.addEventListener('click', () => {
     st.speed = b.dataset.s;
     ui.querySelectorAll('.rp-speed button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    if(st.timer){ tlPause(); tlPlay(); }
+    if(st.playing){ tlPause(); tlPlay(); }
   }));
 
   // ---- tract shapes, one query for every tract on the line list ----
@@ -5712,85 +5707,181 @@ async function tlRun(){
     }
   }).addTo(leafletMap);
   if(!fc) setLeafletStatus('Could not load tract shapes for the time-lapse.');
-  tlRender(0, false);
+  tlPlan(st);
+  tlFrame(0);
   await tlFlyFull();
   if(tl.view === st && !NV_REDUCED) st.autoplay = setTimeout(() => { if(tl.view === st) tlPlay(); }, 1300);
   setTimeout(() => { const c = document.getElementById('tlClose'); if(c) c.focus({ preventScroll: true }); }, 50);
 }
 
-function tlRender(i, animate){
-  const st = tl.view; if(!st) return;
-  const { weeks, statusByWeek } = st.data;
-  st.i = i;
-  const m = statusByWeek[i], prev = i > 0 ? statusByWeek[i - 1] : null;
-  let changed = 0, newAcq = 0;
-  st.layers.forEach((arr, id) => {
-    const s = m.get(id);
-    arr.forEach(l => l.setStyle({ fillColor: s ? statusColor(s) : TL_GREY, fillOpacity: s ? 0.82 : 0.25 }));
-    if(prev && prev.get(id) !== s){
-      changed++;
-      if(s === 'ACQUIRED') newAcq++;
-      if(animate && !NV_REDUCED) arr.forEach(l => {
-        const el = l.getElement && l.getElement(); if(!el) return;
-        el.classList.remove('tl-pulse'); void el.getBoundingClientRect(); el.classList.add('tl-pulse');
-      });
+/* Continuous playback. Time t runs from 0 (first report) to n-1 (latest). Between two reports every tract
+   that changes fades to its new colour at its own moment, ordered by distance from land already in that
+   status — so held ground spreads outward like an empire map instead of flipping all at once. */
+const TL_FADE = 0.32;                          // share of a week each tract takes to change colour
+function tlClamp(v){ return v < 0 ? 0 : v > 1 ? 1 : v; }
+function tlEase(p){ return p * p * (3 - 2 * p); }
+function tlRgb(h){ h = String(h || TL_GREY).replace('#',''); if(h.length === 3) h = h.split('').map(c => c + c).join('');
+  const v = parseInt(h, 16); return isNaN(v) ? [92,107,130] : [v >> 16 & 255, v >> 8 & 255, v & 255]; }
+function tlMix(a, b, p){ const x = tlRgb(a), y = tlRgb(b);
+  return '#' + x.map((c, k) => Math.round(c + (y[k] - c) * p).toString(16).padStart(2,'0')).join(''); }
+function tlCol(s){ return s ? statusColor(s) : TL_GREY; }
+function tlOpa(s){ return s ? 0.82 : 0.25; }
+function tlDate(label){ const d = new Date(`${label}, 2026`); return isNaN(d) ? null : d; }
+function tlFmtDate(d){ return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
+
+function tlPlan(st){
+  const { statusByWeek } = st.data;
+  const cen = new Map();
+  st.layers.forEach((arr, id) => { const b = L.featureGroup(arr).getBounds(); if(b.isValid()) cen.set(id, b.getCenter()); });
+  st.plan = [];
+  for(let k = 0; k < statusByWeek.length - 1; k++){
+    const a = statusByWeek[k], b = statusByWeek[k + 1], plan = new Map();
+    const changed = [...st.layers.keys()].filter(id => a.get(id) !== b.get(id));
+    const placed = changed.filter(id => cen.has(id));
+    if(placed.length){
+      // middle of this week's changes — the fallback origin when nothing is held yet
+      const mid = L.latLngBounds(placed.map(id => cen.get(id))).getCenter();
+      const score = id => {
+        const c = cen.get(id), target = b.get(id); let best = Infinity;
+        a.forEach((s, oid) => { if(s === target && oid !== id && cen.has(oid)){ const d = c.distanceTo(cen.get(oid)); if(d < best) best = d; } });
+        return best < Infinity ? [0, best] : [1, c.distanceTo(mid)];
+      };
+      const ranked = placed.map(id => ({ id, s: score(id) })).sort((x, y) => x.s[0] - y.s[0] || x.s[1] - y.s[1]);
+      const m = ranked.length;
+      ranked.forEach((r, j) => plan.set(r.id, m > 1 ? 0.08 + (1 - TL_FADE - 0.1) * j / (m - 1) : 0.34));
     }
-  });
-
-  const h = history.find(x => x.date === weeks[i]) || {};
-  const ui = document.getElementById('tlPanel'); if(!ui) return;
-  ui.querySelector('#tlStep').textContent = `Week ${i + 1} of ${weeks.length}`;
-  ui.querySelector('#tlWeek').textContent = `Week of ${weeks[i]}`;
-  ui.querySelector('#tlSub').textContent = i === 0
-    ? `Starting point · ${st.layers.size} tracts on the map`
-    : changed ? `${changed} tract${changed === 1 ? '' : 's'} changed status since ${weeks[i - 1]}${newAcq ? ` · ${newAcq} newly acquired` : ''}`
-    : `No tract status changes since ${weeks[i - 1]}`;
-  const lo = h.landowners || {}, ac = h.acres || {};
-  ui.querySelector('#tlLo').textContent = `${lo.ACQUIRED || 0} / ${h.totalLandowners || 0}`;
-  ui.querySelector('#tlAc').textContent = ovFmt(ac.ACQUIRED || 0);
-
-  // net-acre share by status, most advanced first; statuses outside the hierarchy go last
-  const order = STATUS_HIERARCHY.concat(Object.keys(ac).filter(k => !STATUS_HIERARCHY.includes(k)));
-  const total = Object.values(ac).reduce((a, v) => a + (v || 0), 0) || 1;
-  const parts = order.filter(k => (ac[k] || 0) > 0);
-  ui.querySelector('#tlBar').innerHTML = parts.map(k =>
-    `<i style="width:${(ac[k] / total * 100).toFixed(2)}%;background:${statusColor(k)}" title="${ovEsc(ovTitle(k))}: ${ovFmt(ac[k])} net ac"></i>`).join('');
-  const legend = parts.slice();
-  if([...m.values()].includes('PARTIALLY ACQUIRED')) legend.splice(1, 0, 'PARTIALLY ACQUIRED');
-  ui.querySelector('#tlLegend').innerHTML = legend.map(k => `<span><i style="background:${statusColor(k)}"></i>${ovEsc(ovTitle(k))}</span>`).join('');
-
-  ui.querySelector('#tlRange').value = i;
-  ui.querySelector('#tlFill').style.width = `${weeks.length > 1 ? (i / (weeks.length - 1)) * 100 : 0}%`;
-  ui.querySelectorAll('.tl-dot').forEach(d => { const k = +d.dataset.k; d.classList.toggle('past', k < i); d.classList.toggle('cur', k === i); });
-  ui.querySelector('#tlPrev').disabled = i === 0;
-  ui.querySelector('#tlNext').disabled = i === weeks.length - 1;
+    changed.forEach(id => { if(!plan.has(id)) plan.set(id, 0.34); });
+    st.plan.push(plan);
+  }
 }
 
+function tlFrame(t){
+  const st = tl.view; if(!st) return;
+  const { weeks, statusByWeek } = st.data, n = weeks.length;
+  t = Math.max(0, Math.min(n - 1, t)); st.t = t;
+  const k = Math.min(Math.floor(t), n - 2), f = t - k;
+  const atWeek = f < 0.005 ? k : f > 0.995 ? k + 1 : -1;
+  st.i = atWeek >= 0 ? atWeek : Math.round(t);
+  const a = statusByWeek[k], b = statusByWeek[k + 1], plan = st.plan ? st.plan[k] : new Map();
+  let changed = 0, moved = 0, newAcq = 0;
+  st.layers.forEach((arr, id) => {
+    const sa = a.get(id), sb = b.get(id);
+    let fill = tlCol(sa), op = tlOpa(sa), glow = 0;
+    if(sa !== sb){
+      changed++;
+      const p = tlEase(tlClamp((f - (plan.has(id) ? plan.get(id) : 0.34)) / TL_FADE));
+      if(p >= 1){ moved++; if(sb === 'ACQUIRED') newAcq++; }
+      fill = tlMix(tlCol(sa), tlCol(sb), p); op = tlOpa(sa) + (tlOpa(sb) - tlOpa(sa)) * p;
+      glow = NV_REDUCED ? 0 : Math.sin(Math.PI * p);
+    }
+    const key = fill + op.toFixed(2) + glow.toFixed(2);
+    if(arr._k === key) return; arr._k = key;
+    arr.forEach(l => l.setStyle({ fillColor: fill, fillOpacity: op,
+      color: glow > 0.01 ? tlMix('#0b0f17', '#ffffff', glow) : '#0b0f17', weight: 0.8 + 2.6 * glow, opacity: 0.9 }));
+  });
+
+  const ui = document.getElementById('tlPanel'); if(!ui) return;
+  const da = tlDate(weeks[k]), db = tlDate(weeks[k + 1]);
+  const d = da && db ? new Date(da.getTime() + (db - da) * f) : null;
+  ui.querySelector('#tlWeek').textContent = atWeek >= 0 ? `Week of ${weeks[atWeek]}` : (d ? tlFmtDate(d) : weeks[st.i]);
+  ui.querySelector('#tlStep').textContent = atWeek >= 0 ? `Report ${atWeek + 1} of ${n}` : `${weeks[k]} → ${weeks[k + 1]}`;
+  let sub;
+  if(atWeek === 0) sub = `Starting point · ${st.layers.size} tracts on the map`;
+  else if(atWeek > 0){
+    const pa = statusByWeek[atWeek - 1], pb = statusByWeek[atWeek]; let c = 0, na = 0;
+    st.layers.forEach((_, id) => { if(pa.get(id) !== pb.get(id)){ c++; if(pb.get(id) === 'ACQUIRED') na++; } });
+    sub = c ? `${c} tract${c === 1 ? '' : 's'} changed status since ${weeks[atWeek - 1]}${na ? ` · ${na} newly acquired` : ''}`
+            : `No tract status changes since ${weeks[atWeek - 1]}`;
+  } else sub = changed ? `${moved} of ${changed} tract${changed === 1 ? '' : 's'} updated${newAcq ? ` · ${newAcq} newly acquired` : ''}`
+                       : `No tract changes before ${weeks[k + 1]}`;
+  ui.querySelector('#tlSub').textContent = sub;
+
+  // stats and status bar glide between the two reports
+  const ha = history.find(x => x.date === weeks[k]) || {}, hb = history.find(x => x.date === weeks[k + 1]) || {};
+  const e = tlEase(f), lerp = (x, y) => (x || 0) + ((y || 0) - (x || 0)) * e;
+  const la = ha.landowners || {}, lb = hb.landowners || {}, aa = ha.acres || {}, ab = hb.acres || {};
+  ui.querySelector('#tlLo').textContent = `${Math.round(lerp(la.ACQUIRED, lb.ACQUIRED))} / ${Math.round(lerp(ha.totalLandowners, hb.totalLandowners))}`;
+  ui.querySelector('#tlAc').textContent = ovFmt(lerp(aa.ACQUIRED, ab.ACQUIRED));
+  const keys = [...new Set(Object.keys(aa).concat(Object.keys(ab)))];
+  const order = STATUS_HIERARCHY.concat(keys.filter(x => !STATUS_HIERARCHY.includes(x)));
+  const ac = {}; keys.forEach(x => ac[x] = lerp(aa[x], ab[x]));
+  const total = Object.values(ac).reduce((s, v) => s + v, 0) || 1;
+  const parts = order.filter(x => (ac[x] || 0) > 0.01);
+  if(st.barKeys !== parts.join('|')){
+    st.barKeys = parts.join('|');
+    ui.querySelector('#tlBar').innerHTML = parts.map(x => `<i data-s="${ovEsc(x)}" style="background:${statusColor(x)}"></i>`).join('');
+    const legend = parts.slice();
+    if([...a.values(), ...b.values()].includes('PARTIALLY ACQUIRED')) legend.splice(1, 0, 'PARTIALLY ACQUIRED');
+    ui.querySelector('#tlLegend').innerHTML = legend.map(x => `<span><i style="background:${statusColor(x)}"></i>${ovEsc(ovTitle(x))}</span>`).join('');
+  }
+  ui.querySelectorAll('#tlBar i').forEach(el => { const x = el.dataset.s;
+    el.style.width = `${(ac[x] / total * 100).toFixed(2)}%`; el.title = `${ovTitle(x)}: ${ovFmt(ac[x])} net ac`; });
+
+  ui.querySelector('#tlRange').value = t;
+  ui.querySelector('#tlFill').style.width = `${(t / (n - 1)) * 100}%`;
+  ui.querySelectorAll('.tl-dot').forEach(dot => { const j = +dot.dataset.k; dot.classList.toggle('past', j <= t + 0.005 && j !== atWeek); dot.classList.toggle('cur', j === atWeek); });
+  ui.querySelector('#tlPrev').disabled = t <= 0;
+  ui.querySelector('#tlNext').disabled = t >= n - 1;
+}
+
+function tlSetPlayLabel(){
+  const st = tl.view, b = document.getElementById('tlPlay'); if(!st || !b) return;
+  b.textContent = st.playing ? 'Pause' : st.t >= st.data.weeks.length - 1 ? 'Replay' : 'Play';
+}
 function tlPlay(){
-  const st = tl.view; if(!st || st.timer) return;
-  clearTimeout(st.autoplay);
-  const last = st.data.weeks.length - 1;
-  if(st.i >= last) tlRender(0, false);
-  const step = () => {
-    if(!tl.view || tl.view !== st) return;
-    if(st.i >= last){ tlPause(); return; }
-    tlRender(st.i + 1, true);
-    if(st.i >= last) tlPause();
+  const st = tl.view; if(!st || st.playing) return;
+  tlStop(st);
+  const n = st.data.weeks.length, wk = TL_SPEEDS[st.speed];
+  if(st.t >= n - 1) tlFrame(0);
+  st.playing = true; tlSetPlayLabel();
+  if(NV_REDUCED){                                   // no motion: step report to report
+    st.raf = setInterval(() => { tlFrame(Math.floor(st.t) + 1); if(st.t >= n - 1) tlPause(); }, wk);
+    st.rafIsTimer = true; return;
+  }
+  let last = performance.now(), dwell = 0;
+  const loop = now => {
+    if(tl.view !== st || !st.playing) return;
+    const dt = Math.min(now - last, 100); last = now;
+    if(dwell > 0) dwell -= dt;
+    else {
+      const before = Math.floor(st.t + 1e-6);
+      let t = st.t + dt / wk;
+      if(Math.floor(t) > before && t < n - 1){ t = Math.floor(t); dwell = wk * 0.18; }   // linger on each report date
+      tlFrame(t);
+      if(st.t >= n - 1){ tlPause(); return; }
+    }
+    st.raf = requestAnimationFrame(loop);
   };
-  st.timer = setInterval(step, TL_SPEEDS[st.speed]);
-  document.getElementById('tlPlay').textContent = 'Pause';
+  st.raf = requestAnimationFrame(loop);
+}
+function tlStop(st){
+  clearTimeout(st.autoplay);
+  if(st.raf){ st.rafIsTimer ? clearInterval(st.raf) : cancelAnimationFrame(st.raf); st.raf = null; st.rafIsTimer = false; }
+  if(st.tween){ cancelAnimationFrame(st.tween); st.tween = null; }
 }
 function tlPause(){
   const st = tl.view; if(!st) return;
-  clearTimeout(st.autoplay);
-  if(st.timer){ clearInterval(st.timer); st.timer = null; }
-  const b = document.getElementById('tlPlay');
-  if(b) b.textContent = st.i >= st.data.weeks.length - 1 ? 'Replay' : 'Play';
+  tlStop(st); st.playing = false; tlSetPlayLabel();
+}
+/* Prev / next: glide to a report date (instant when reduced motion is on) */
+function tlGoTo(target){
+  const st = tl.view; if(!st) return;
+  tlPause();
+  const n = st.data.weeks.length; target = Math.max(0, Math.min(n - 1, target));
+  if(NV_REDUCED || target === st.t){ tlFrame(target); tlSetPlayLabel(); return; }
+  const from = st.t, start = performance.now(), dur = Math.min(1600, 700 + 500 * Math.abs(target - from));
+  const step = now => {
+    if(tl.view !== st) return;
+    const p = tlClamp((now - start) / dur);
+    tlFrame(from + (target - from) * tlEase(p));
+    if(p < 1) st.tween = requestAnimationFrame(step); else { st.tween = null; tlSetPlayLabel(); }
+  };
+  st.tween = requestAnimationFrame(step);
 }
 
 function tlEnd(){
   const st = tl.view;
-  if(st){ clearTimeout(st.autoplay); if(st.timer) clearInterval(st.timer); }
+  if(st){ tlStop(st); st.playing = false; }
   tl.view = null;
   const mapEl = document.getElementById('leafletMap');
   if(mapEl) mapEl.classList.remove('tl-on');
@@ -5821,9 +5912,9 @@ function tlUpdateButton(){
     if(!tl.running) return;
     if(e.key === 'Escape'){ tlEnd(); return; }
     if(e.target && e.target.closest && e.target.closest('input, textarea, button')) return;   // the slider and buttons handle their own keys
-    else if(e.key === ' '){ e.preventDefault(); tl.view && (tl.view.timer ? tlPause() : tlPlay()); }
-    else if(e.key === 'ArrowRight' && tl.view){ tlPause(); tlRender(Math.min(tl.view.data.weeks.length - 1, tl.view.i + 1), true); }
-    else if(e.key === 'ArrowLeft' && tl.view){ tlPause(); tlRender(Math.max(0, tl.view.i - 1), true); }
+    else if(e.key === ' '){ e.preventDefault(); tl.view && (tl.view.playing ? tlPause() : tlPlay()); }
+    else if(e.key === 'ArrowRight' && tl.view){ tlGoTo(Math.floor(tl.view.t + 1e-6) + 1); }
+    else if(e.key === 'ArrowLeft' && tl.view){ tlGoTo(Math.ceil(tl.view.t - 1e-6) - 1); }
   }, true);
   tlUpdateButton();
 })();
