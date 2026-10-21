@@ -5707,7 +5707,6 @@ async function tlRun(){
     }
   }).addTo(leafletMap);
   if(!fc) setLeafletStatus('Could not load tract shapes for the time-lapse.');
-  tlPlan(st);
   tlFrame(0);
   await tlFlyFull();
   if(tl.view === st && !NV_REDUCED) st.autoplay = setTimeout(() => { if(tl.view === st) tlPlay(); }, 1300);
@@ -5715,9 +5714,7 @@ async function tlRun(){
 }
 
 /* Continuous playback. Time t runs from 0 (first report) to n-1 (latest). Between two reports every tract
-   that changes fades to its new colour at its own moment, ordered by distance from land already in that
-   status — so held ground spreads outward like an empire map instead of flipping all at once. */
-const TL_FADE = 0.32;                          // share of a week each tract takes to change colour
+   that changes fades to its new colour together, gradually across the whole week. */
 function tlClamp(v){ return v < 0 ? 0 : v > 1 ? 1 : v; }
 function tlEase(p){ return p * p * (3 - 2 * p); }
 function tlRgb(h){ h = String(h || TL_GREY).replace('#',''); if(h.length === 3) h = h.split('').map(c => c + c).join('');
@@ -5729,32 +5726,6 @@ function tlOpa(s){ return s ? 0.82 : 0.25; }
 function tlDate(label){ const d = new Date(`${label}, 2026`); return isNaN(d) ? null : d; }
 function tlFmtDate(d){ return d.toLocaleDateString('en-US', { month:'short', day:'numeric' }); }
 
-function tlPlan(st){
-  const { statusByWeek } = st.data;
-  const cen = new Map();
-  st.layers.forEach((arr, id) => { const b = L.featureGroup(arr).getBounds(); if(b.isValid()) cen.set(id, b.getCenter()); });
-  st.plan = [];
-  for(let k = 0; k < statusByWeek.length - 1; k++){
-    const a = statusByWeek[k], b = statusByWeek[k + 1], plan = new Map();
-    const changed = [...st.layers.keys()].filter(id => a.get(id) !== b.get(id));
-    const placed = changed.filter(id => cen.has(id));
-    if(placed.length){
-      // middle of this week's changes — the fallback origin when nothing is held yet
-      const mid = L.latLngBounds(placed.map(id => cen.get(id))).getCenter();
-      const score = id => {
-        const c = cen.get(id), target = b.get(id); let best = Infinity;
-        a.forEach((s, oid) => { if(s === target && oid !== id && cen.has(oid)){ const d = c.distanceTo(cen.get(oid)); if(d < best) best = d; } });
-        return best < Infinity ? [0, best] : [1, c.distanceTo(mid)];
-      };
-      const ranked = placed.map(id => ({ id, s: score(id) })).sort((x, y) => x.s[0] - y.s[0] || x.s[1] - y.s[1]);
-      const m = ranked.length;
-      ranked.forEach((r, j) => plan.set(r.id, m > 1 ? 0.08 + (1 - TL_FADE - 0.1) * j / (m - 1) : 0.34));
-    }
-    changed.forEach(id => { if(!plan.has(id)) plan.set(id, 0.34); });
-    st.plan.push(plan);
-  }
-}
-
 function tlFrame(t){
   const st = tl.view; if(!st) return;
   const { weeks, statusByWeek } = st.data, n = weeks.length;
@@ -5762,22 +5733,21 @@ function tlFrame(t){
   const k = Math.min(Math.floor(t), n - 2), f = t - k;
   const atWeek = f < 0.005 ? k : f > 0.995 ? k + 1 : -1;
   st.i = atWeek >= 0 ? atWeek : Math.round(t);
-  const a = statusByWeek[k], b = statusByWeek[k + 1], plan = st.plan ? st.plan[k] : new Map();
-  let changed = 0, moved = 0, newAcq = 0;
+  const a = statusByWeek[k], b = statusByWeek[k + 1], p = tlEase(f);
+  let changed = 0, newAcq = 0;
   st.layers.forEach((arr, id) => {
     const sa = a.get(id), sb = b.get(id);
     let fill = tlCol(sa), op = tlOpa(sa), glow = 0;
     if(sa !== sb){
       changed++;
-      const p = tlEase(tlClamp((f - (plan.has(id) ? plan.get(id) : 0.34)) / TL_FADE));
-      if(p >= 1){ moved++; if(sb === 'ACQUIRED') newAcq++; }
+      if(sb === 'ACQUIRED') newAcq++;
       fill = tlMix(tlCol(sa), tlCol(sb), p); op = tlOpa(sa) + (tlOpa(sb) - tlOpa(sa)) * p;
       glow = NV_REDUCED ? 0 : Math.sin(Math.PI * p);
     }
     const key = fill + op.toFixed(2) + glow.toFixed(2);
     if(arr._k === key) return; arr._k = key;
     arr.forEach(l => l.setStyle({ fillColor: fill, fillOpacity: op,
-      color: glow > 0.01 ? tlMix('#0b0f17', '#ffffff', glow) : '#0b0f17', weight: 0.8 + 2.6 * glow, opacity: 0.9 }));
+      color: glow > 0.01 ? tlMix('#0b0f17', '#ffffff', glow * 0.8) : '#0b0f17', weight: 0.8 + 1.4 * glow, opacity: 0.9 }));
   });
 
   const ui = document.getElementById('tlPanel'); if(!ui) return;
@@ -5792,7 +5762,7 @@ function tlFrame(t){
     st.layers.forEach((_, id) => { if(pa.get(id) !== pb.get(id)){ c++; if(pb.get(id) === 'ACQUIRED') na++; } });
     sub = c ? `${c} tract${c === 1 ? '' : 's'} changed status since ${weeks[atWeek - 1]}${na ? ` · ${na} newly acquired` : ''}`
             : `No tract status changes since ${weeks[atWeek - 1]}`;
-  } else sub = changed ? `${moved} of ${changed} tract${changed === 1 ? '' : 's'} updated${newAcq ? ` · ${newAcq} newly acquired` : ''}`
+  } else sub = changed ? `${changed} tract${changed === 1 ? '' : 's'} changing before the ${weeks[k + 1]} report${newAcq ? ` · ${newAcq} to acquired` : ''}`
                        : `No tract changes before ${weeks[k + 1]}`;
   ui.querySelector('#tlSub').textContent = sub;
 
