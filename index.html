@@ -881,8 +881,8 @@
   .rp-btn svg{ width:13px; height:13px; }
   .rp-btn:hover{ box-shadow: 0 0 0 3px var(--blue-glow); }
   .rp-btn[disabled]{ opacity:.45; cursor:default; box-shadow:none; }
-  .ov-mapcard .ov-ch{ align-items:center; }
-  .ov-mapcard .ov-ch > div:first-child{ flex:1; min-width:0; }
+  .ov-mapcard .ov-ch{ align-items:center; flex-wrap:wrap; row-gap:8px; }
+  .ov-mapcard .ov-ch > div:first-child{ flex:1 1 240px; min-width:0; }
   .rp-panel{ position:absolute; left:24px; bottom:24px; z-index:1100; width:330px; padding:13px 15px 12px; border-radius:14px;
     background: var(--overlay-bg); border:1px solid var(--border); box-shadow: 0 14px 36px rgba(15,23,42,.28);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--text-hi); }
@@ -1465,6 +1465,50 @@
   @keyframes selPulse{ 0%,100%{ stroke-opacity:1; } 50%{ stroke-opacity:.45; } }
   @media (prefers-reduced-motion: reduce){ .sel-tract-line{ animation:none; } }
   @media (max-width: 700px){ .nv-panel{ top:auto; left:10px; right:10px; bottom:10px; width:auto; max-height:45vh; } }
+
+  /* ---- Weekly time-lapse: every tract recoloured week by week from the landowner snapshots ---- */
+  #leafletMap.tl-on .leaflet-overlay-pane{ opacity:0 !important; }
+  .tl-pane path{ transition: fill .7s ease, fill-opacity .7s ease, stroke .7s ease; }
+  @media (prefers-reduced-motion: reduce){ .tl-pane path{ transition:none; } }
+  .tl-panel{ left:16px; bottom:16px; width:380px; padding:14px 16px 13px; transform: translateY(16px); opacity:0;
+    transition: transform .35s ease, opacity .35s ease; font-family:'Inter',sans-serif; }
+  .tl-panel.in{ transform:none; opacity:1; }
+  .tl-panel .rp-tag{ background: var(--blue-soft); color: var(--on-soft); }
+  .tl-week{ font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:600; line-height:1.05; margin-top:8px; letter-spacing:-.01em; }
+  .tl-sub{ font-size:12px; color: var(--text-mid); margin-top:3px; min-height:16px; }
+  .tl-stats{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:11px; }
+  .tl-stat{ background: var(--panel-elev); border:1px solid var(--border); border-radius:10px; padding:8px 10px; }
+  .tl-stat b{ display:block; font-family:'JetBrains Mono',monospace; font-size:19px; color: var(--text-hi); font-weight:600; }
+  .tl-stat span{ font-size:11px; color: var(--text-lo); }
+  .tl-bar{ display:flex; height:8px; border-radius:4px; overflow:hidden; margin-top:11px; background: var(--track); }
+  .tl-bar i{ display:block; height:100%; transition: width .7s ease; }
+  .tl-legend{ display:flex; flex-wrap:wrap; gap:4px 11px; margin-top:8px; font-size:11px; color: var(--text-mid); }
+  .tl-legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .tl-legend i{ width:10px; height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.35); }
+  .tl-scrub{ position:relative; margin-top:13px; height:26px; }
+  .tl-scrub input{ position:absolute; inset:0; width:100%; margin:0; opacity:0; cursor:pointer; z-index:2; }
+  .tl-track{ position:absolute; left:6px; right:6px; top:12px; height:3px; border-radius:2px; background: var(--track); }
+  .tl-fill{ position:absolute; left:0; top:0; bottom:0; border-radius:2px; background: var(--blue); transition: width .4s ease; }
+  .tl-dot{ position:absolute; top:-5px; width:13px; height:13px; margin-left:-6.5px; border-radius:50%; background: var(--track);
+    border:2px solid var(--overlay-bg); box-sizing:border-box; transition: background .3s, transform .3s; }
+  .tl-dot.past{ background: var(--blue); }
+  .tl-dot.cur{ background: var(--blue); transform: scale(1.45); box-shadow: 0 0 0 4px var(--blue-glow); }
+  .tl-ticks{ display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:10px; color: var(--text-lo); margin-top:2px; }
+  .tl-panel .rp-ctrl{ margin-top:10px; }
+  .tl-panel .rp-top{ padding-right:40px; }
+  .tl-panel .nv-close{ top:10px; right:10px; }
+  .tl-ticks span.tl-skip{ visibility:hidden; }
+  .tl-panel .rp-ctrl > button.tl-play{ background: var(--blue-soft); color: var(--on-soft); border-color: var(--blue); min-width:62px; text-align:center; }
+  .tl-pulse{ animation: tlPulse 1.4s ease-out 1; }
+  @keyframes tlPulse{ 0%{ stroke:#ffffff; stroke-width:9; stroke-opacity:1; } 100%{ stroke-width:1; stroke-opacity:.9; } }
+  @media (prefers-reduced-motion: reduce){ .tl-pulse{ animation:none; } }
+  .tl-tip{ font-family:'Inter',sans-serif; font-size:12px; line-height:1.4; }
+  .tl-tip b{ font-family:'JetBrains Mono',monospace; }
+  @media (max-width: 700px){
+    .tl-panel{ left:10px; right:10px; bottom:10px; width:auto; padding:12px 13px 11px; }
+    .tl-week{ font-size:24px; }
+    .tl-stat b{ font-size:16px; }
+  }
 </style>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1566,6 +1610,8 @@
         <div class="ov-ch"><div><h2>Parcel map</h2><div class="sub">Live from GIS · click a parcel for details · the legend filters by status</div></div>
           <button type="button" class="rp-btn" id="rpBtn" title="Show the tracts newly acquired in the selected report week">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg><span>New this week</span></button>
+          <button type="button" class="rp-btn" id="tlBtn" title="Replay every weekly report on the map">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>Time-lapse</span></button>
           <div class="ov-mapsearch" role="combobox" aria-haspopup="listbox" aria-owns="ovSugg">
             <input type="search" id="ovMapSearch" placeholder="Search landowner or tract…" autocomplete="off" aria-autocomplete="list" aria-controls="ovSugg">
             <div class="ov-sugg" id="ovSugg" role="listbox"></div>
@@ -5516,6 +5562,270 @@ function rpEnd(){
     rpEnd();
   }, true);
   rpUpdateButton();
+})();
+
+/* =====================================================================
+   WEEKLY TIME-LAPSE
+   Replays every weekly report that has a landowner snapshot. Each tract is coloured by the status
+   it had that week, derived from its landowners' snapshot statuses with the export's own tract rule:
+   all owners acquired → ACQUIRED, some → PARTIALLY ACQUIRED, otherwise the most advanced owner status.
+   The latest week uses the line list's tract status, so the replay ends exactly on today's map.
+   Tracts whose status changed pulse as the week lands. Esc or ✕ closes.
+   ===================================================================== */
+var tl = { running:false };
+const TL_GREY = '#5c6b82';
+const TL_SPEEDS = { '1×': 1800, '2×': 900 };
+
+function tlBuild(){
+  const weeks = history.map(h => h.date).filter(d => landownerSnapshots[d]);
+  if(weeks.length < 2) return null;
+  const latest = weeks[weeks.length - 1];
+  const nameByAid = new Map();
+  landownerSnapshots[latest].forEach(o => { if(o.aid != null) nameByAid.set(o.aid, o.name); });
+  const tractOwners = new Map(), tractNow = new Map();
+  eppsLineList.forEach(r => {
+    const id = String(r.tractId);
+    if(!tractOwners.has(id)) tractOwners.set(id, new Set());
+    tractOwners.get(id).add(r.landowner);
+    if(r.trStatus) tractNow.set(id, r.trStatus);
+  });
+  const rank = s => { const i = STATUS_HIERARCHY.indexOf(s); return i < 0 ? 99 : i; };   // lower = more advanced
+  const latestIsCurrent = latest === history[history.length - 1].date;
+  // older snapshots carry combined statuses such as "LEGAL + NEGOTIATING": keep the most advanced known part
+  const norm = s => {
+    if(!s || s.indexOf('+') < 0) return s;
+    const p = s.split('+').map(x => x.trim()).filter(Boolean);
+    return p.slice().sort((a,b) => rank(a) - rank(b))[0];
+  };
+  const statusByWeek = weeks.map((w, wi) => {
+    const owner = new Map();
+    landownerSnapshots[w].forEach(o => owner.set((o.aid != null && nameByAid.get(o.aid)) || o.name, norm(o.status)));
+    const m = new Map();
+    tractOwners.forEach((names, id) => {
+      if(wi === weeks.length - 1 && latestIsCurrent && tractNow.has(id)){ m.set(id, tractNow.get(id)); return; }
+      const sts = [...names].map(n => owner.get(n)).filter(Boolean);
+      if(!sts.length){ m.set(id, null); return; }
+      const acq = sts.filter(s => s === 'ACQUIRED').length;
+      m.set(id, acq === sts.length ? 'ACQUIRED' : acq ? 'PARTIALLY ACQUIRED' : sts.slice().sort((a,b) => rank(a) - rank(b))[0]);
+    });
+    return m;
+  });
+  return { weeks, tractOwners, statusByWeek };
+}
+
+function tlPadding(){
+  if(window.innerWidth <= 700){
+    const p = document.getElementById('tlPanel');
+    return { paddingTopLeft: [20, 20], paddingBottomRight: [20, (p ? p.offsetHeight : 300) + 24] };
+  }
+  return { paddingTopLeft: [420, 40], paddingBottomRight: [40, 40] };
+}
+function tlFlyFull(){
+  return nvFullExtent().then(b => {
+    if(!b || !tl.view) return;
+    const o = Object.assign({ maxZoom: 13 }, tlPadding());
+    if(NV_REDUCED) leafletMap.fitBounds(b, o); else leafletMap.flyToBounds(b, Object.assign(o, { duration: 1.1 }));
+  });
+}
+
+async function tlRun(){
+  if(tl.running || (rp && rp.running)) return;
+  if(!leafletMap || !leafletParcelLayer){ setLeafletStatus('The map is still loading — try again in a moment.'); return; }
+  const data = tlBuild(); if(!data) return;
+  if(typeof clearTractSelection === 'function') clearTractSelection();
+  if(typeof setPrintPickMode === 'function') setPrintPickMode(false);
+
+  const mapEl = document.getElementById('leafletMap');
+  const stage = mapEl.parentElement;
+  const st = tl.view = { data, i: 0, timer: null, speed: '1×', layers: new Map(), stage, scrollY: window.scrollY };
+  st.home = { parent: stage.parentNode, next: stage.nextSibling };
+  document.body.appendChild(stage);
+  tl.running = true; tlUpdateButton();
+
+  const n = data.weeks.length;
+  const ui = document.createElement('div');
+  ui.className = 'rp-panel tl-panel'; ui.id = 'tlPanel';
+  ui.innerHTML = `
+    <div class="rp-top"><span class="rp-tag">Time-lapse</span><span class="rp-step" id="tlStep"></span></div>
+    <button type="button" class="nv-close" id="tlClose" title="Close (Esc)">✕</button>
+    <div class="tl-week" id="tlWeek"></div>
+    <div class="tl-sub" id="tlSub"></div>
+    <div class="tl-stats">
+      <div class="tl-stat"><b id="tlLo">–</b><span>landowners acquired</span></div>
+      <div class="tl-stat"><b id="tlAc">–</b><span>net acres acquired</span></div>
+    </div>
+    <div class="tl-bar" id="tlBar" title="Net acres by status"></div>
+    <div class="tl-legend" id="tlLegend"></div>
+    <div class="tl-scrub">
+      <div class="tl-track"><div class="tl-fill" id="tlFill"></div>
+        ${data.weeks.map((w, k) => `<span class="tl-dot" data-k="${k}" style="left:${n > 1 ? (k / (n - 1)) * 100 : 0}%"></span>`).join('')}</div>
+      <input type="range" id="tlRange" min="0" max="${n - 1}" step="1" value="0" aria-label="Report week">
+    </div>
+    <div class="tl-ticks">${data.weeks.map((w, k) => `<span${n > 8 && k % 2 && k !== n - 1 ? ' class="tl-skip"' : ''}>${ovEsc(w)}</span>`).join('')}</div>
+    <div class="rp-ctrl">
+      <button type="button" id="tlPrev" title="Previous week">‹</button>
+      <button type="button" class="tl-play" id="tlPlay">Play</button>
+      <button type="button" id="tlNext" title="Next week">›</button>
+      <div class="rp-speed">${Object.keys(TL_SPEEDS).map(s => `<button type="button" data-s="${s}" aria-pressed="${s === st.speed}">${s}</button>`).join('')}</div>
+    </div>`;
+  L.DomEvent.disableClickPropagation(ui);
+  L.DomEvent.disableScrollPropagation(ui);
+  stage.appendChild(ui);
+  stage.classList.add('nv-stage');
+  document.body.classList.add('nv-open');
+  mapEl.classList.add('tl-on');
+  leafletMap.invalidateSize();
+  requestAnimationFrame(() => ui.classList.add('in'));
+
+  ui.querySelector('#tlClose').addEventListener('click', tlEnd);
+  ui.querySelector('#tlPlay').addEventListener('click', () => st.timer ? tlPause() : tlPlay());
+  ui.querySelector('#tlPrev').addEventListener('click', () => { tlPause(); tlRender(Math.max(0, st.i - 1), true); });
+  ui.querySelector('#tlNext').addEventListener('click', () => { tlPause(); tlRender(Math.min(n - 1, st.i + 1), true); });
+  ui.querySelector('#tlRange').addEventListener('input', e => { tlPause(); tlRender(+e.target.value, true); });
+  ui.querySelectorAll('.rp-speed button').forEach(b => b.addEventListener('click', () => {
+    st.speed = b.dataset.s;
+    ui.querySelectorAll('.rp-speed button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    if(st.timer){ tlPause(); tlPlay(); }
+  }));
+
+  // ---- tract shapes, one query for every tract on the line list ----
+  if(!leafletMap.getPane('tlPane')){
+    leafletMap.createPane('tlPane');
+    leafletMap.getPane('tlPane').style.zIndex = 425;          // above the (hidden) parcels, below the STR grid and boundary
+    leafletMap.getPane('tlPane').classList.add('tl-pane');
+  }
+  ui.querySelector('#tlSub').textContent = 'Loading tract shapes…';
+  const fc = await rpQuery([...data.tractOwners.keys()]);
+  if(tl.view !== st) return;                                   // closed while loading
+  st.group = L.geoJSON(fc || { type:'FeatureCollection', features:[] }, {
+    pane: 'tlPane',
+    style: () => ({ color:'#0b0f17', weight:0.8, opacity:0.9, fillColor:TL_GREY, fillOpacity:0.25 }),
+    onEachFeature: (f, layer) => {
+      const id = String(f.properties[ARCGIS_TRACT_FIELD]);
+      if(!st.layers.has(id)) st.layers.set(id, []);
+      st.layers.get(id).push(layer);
+      layer.bindTooltip(() => {
+        const s = st.data.statusByWeek[st.i].get(id);
+        const owners = [...(st.data.tractOwners.get(id) || [])].map(ovEsc).join('<br>');
+        return `<div class="tl-tip"><b>${ovEsc(id)}</b><br>${owners}<br>${ovEsc(st.data.weeks[st.i])}: <b>${ovEsc(s ? ovTitle(s) : 'Not in report yet')}</b></div>`;
+      }, { sticky: true });
+    }
+  }).addTo(leafletMap);
+  if(!fc) setLeafletStatus('Could not load tract shapes for the time-lapse.');
+  tlRender(0, false);
+  await tlFlyFull();
+  if(tl.view === st && !NV_REDUCED) st.autoplay = setTimeout(() => { if(tl.view === st) tlPlay(); }, 1300);
+  setTimeout(() => { const c = document.getElementById('tlClose'); if(c) c.focus({ preventScroll: true }); }, 50);
+}
+
+function tlRender(i, animate){
+  const st = tl.view; if(!st) return;
+  const { weeks, statusByWeek } = st.data;
+  st.i = i;
+  const m = statusByWeek[i], prev = i > 0 ? statusByWeek[i - 1] : null;
+  let changed = 0, newAcq = 0;
+  st.layers.forEach((arr, id) => {
+    const s = m.get(id);
+    arr.forEach(l => l.setStyle({ fillColor: s ? statusColor(s) : TL_GREY, fillOpacity: s ? 0.82 : 0.25 }));
+    if(prev && prev.get(id) !== s){
+      changed++;
+      if(s === 'ACQUIRED') newAcq++;
+      if(animate && !NV_REDUCED) arr.forEach(l => {
+        const el = l.getElement && l.getElement(); if(!el) return;
+        el.classList.remove('tl-pulse'); void el.getBoundingClientRect(); el.classList.add('tl-pulse');
+      });
+    }
+  });
+
+  const h = history.find(x => x.date === weeks[i]) || {};
+  const ui = document.getElementById('tlPanel'); if(!ui) return;
+  ui.querySelector('#tlStep').textContent = `Week ${i + 1} of ${weeks.length}`;
+  ui.querySelector('#tlWeek').textContent = `Week of ${weeks[i]}`;
+  ui.querySelector('#tlSub').textContent = i === 0
+    ? `Starting point · ${st.layers.size} tracts on the map`
+    : changed ? `${changed} tract${changed === 1 ? '' : 's'} changed status since ${weeks[i - 1]}${newAcq ? ` · ${newAcq} newly acquired` : ''}`
+    : `No tract status changes since ${weeks[i - 1]}`;
+  const lo = h.landowners || {}, ac = h.acres || {};
+  ui.querySelector('#tlLo').textContent = `${lo.ACQUIRED || 0} / ${h.totalLandowners || 0}`;
+  ui.querySelector('#tlAc').textContent = ovFmt(ac.ACQUIRED || 0);
+
+  // net-acre share by status, most advanced first; statuses outside the hierarchy go last
+  const order = STATUS_HIERARCHY.concat(Object.keys(ac).filter(k => !STATUS_HIERARCHY.includes(k)));
+  const total = Object.values(ac).reduce((a, v) => a + (v || 0), 0) || 1;
+  const parts = order.filter(k => (ac[k] || 0) > 0);
+  ui.querySelector('#tlBar').innerHTML = parts.map(k =>
+    `<i style="width:${(ac[k] / total * 100).toFixed(2)}%;background:${statusColor(k)}" title="${ovEsc(ovTitle(k))}: ${ovFmt(ac[k])} net ac"></i>`).join('');
+  const legend = parts.slice();
+  if([...m.values()].includes('PARTIALLY ACQUIRED')) legend.splice(1, 0, 'PARTIALLY ACQUIRED');
+  ui.querySelector('#tlLegend').innerHTML = legend.map(k => `<span><i style="background:${statusColor(k)}"></i>${ovEsc(ovTitle(k))}</span>`).join('');
+
+  ui.querySelector('#tlRange').value = i;
+  ui.querySelector('#tlFill').style.width = `${weeks.length > 1 ? (i / (weeks.length - 1)) * 100 : 0}%`;
+  ui.querySelectorAll('.tl-dot').forEach(d => { const k = +d.dataset.k; d.classList.toggle('past', k < i); d.classList.toggle('cur', k === i); });
+  ui.querySelector('#tlPrev').disabled = i === 0;
+  ui.querySelector('#tlNext').disabled = i === weeks.length - 1;
+}
+
+function tlPlay(){
+  const st = tl.view; if(!st || st.timer) return;
+  clearTimeout(st.autoplay);
+  const last = st.data.weeks.length - 1;
+  if(st.i >= last) tlRender(0, false);
+  const step = () => {
+    if(!tl.view || tl.view !== st) return;
+    if(st.i >= last){ tlPause(); return; }
+    tlRender(st.i + 1, true);
+    if(st.i >= last) tlPause();
+  };
+  st.timer = setInterval(step, TL_SPEEDS[st.speed]);
+  document.getElementById('tlPlay').textContent = 'Pause';
+}
+function tlPause(){
+  const st = tl.view; if(!st) return;
+  clearTimeout(st.autoplay);
+  if(st.timer){ clearInterval(st.timer); st.timer = null; }
+  const b = document.getElementById('tlPlay');
+  if(b) b.textContent = st.i >= st.data.weeks.length - 1 ? 'Replay' : 'Play';
+}
+
+function tlEnd(){
+  const st = tl.view;
+  if(st){ clearTimeout(st.autoplay); if(st.timer) clearInterval(st.timer); }
+  tl.view = null;
+  const mapEl = document.getElementById('leafletMap');
+  if(mapEl) mapEl.classList.remove('tl-on');
+  document.body.classList.remove('nv-open');
+  if(st){
+    if(leafletMap){ leafletMap.stop(); if(st.group) leafletMap.removeLayer(st.group); }
+    const ui = document.getElementById('tlPanel'); if(ui) ui.remove();
+    st.stage.classList.remove('nv-stage');
+    if(st.home && st.home.parent) st.home.parent.insertBefore(st.stage, st.home.next);
+    if(leafletMap) leafletMap.invalidateSize();
+    window.scrollTo({ top: st.scrollY, behavior: 'instant' });
+    if(leafletMap) setTimeout(refocusLeafletMap, 60);
+  }
+  tl.running = false;
+  tlUpdateButton();
+}
+function tlUpdateButton(){
+  const b = document.getElementById('tlBtn'); if(!b) return;
+  const weeks = history.map(h => h.date).filter(d => typeof landownerSnapshots !== 'undefined' && landownerSnapshots[d]);
+  b.disabled = weeks.length < 2 || tl.running;
+  b.title = weeks.length < 2 ? 'Needs at least two weekly snapshots'
+          : `Replay the map week by week, ${weeks[0]} → ${weeks[weeks.length - 1]}`;
+}
+(function wireTimelapse(){
+  const b = document.getElementById('tlBtn'); if(!b) return;
+  b.addEventListener('click', tlRun);
+  document.addEventListener('keydown', e => {
+    if(!tl.running) return;
+    if(e.key === 'Escape'){ tlEnd(); return; }
+    if(e.target && e.target.closest && e.target.closest('input, textarea, button')) return;   // the slider and buttons handle their own keys
+    else if(e.key === ' '){ e.preventDefault(); tl.view && (tl.view.timer ? tlPause() : tlPlay()); }
+    else if(e.key === 'ArrowRight' && tl.view){ tlPause(); tlRender(Math.min(tl.view.data.weeks.length - 1, tl.view.i + 1), true); }
+    else if(e.key === 'ArrowLeft' && tl.view){ tlPause(); tlRender(Math.max(0, tl.view.i - 1), true); }
+  }, true);
+  tlUpdateButton();
 })();
 
 initLeafletMap();
